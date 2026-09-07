@@ -1283,7 +1283,9 @@ function stockLineHtml(p){
     </div>`;
   }
   const total = stockFor(p.id);
-  const neg = rows.some(v => (num(v.current_stock) || 0) < 0);
+  // Laal sirf tab jab koi GINA HUA item minus me ho — discontinued variant
+  // (Beer Cover Mix -4) total me nahi, to rang bhi nahi badalna chahiye.
+  const neg = rows.filter(v => !v.is_discontinued).some(v => (num(v.current_stock) || 0) < 0);
   const disc = isDiscontinued(p.id);
   const partDisc = !disc && rows.some(v => v.is_discontinued);
   const low = !disc && total !== null && total < LOW_STOCK_AT && total >= 0;
