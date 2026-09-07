@@ -546,11 +546,16 @@ function setDefaultTab(k){ localStorage.setItem(DEFAULT_TAB_KEY, k); }
    app allow writes from the public key that ships in this
    file. Treat the app link the same way you would treat the
    spreadsheet it replaced: fine inside the team, not public. */
+/* REQUIRE_PIN is the one switch. While it is false the app is fully open:
+   no PIN prompt, no Unlock/Lock button, every tab reachable. Flip it back to
+   true and the whole gate below comes back exactly as it was — nothing else
+   needs touching. Left off on purpose while the app is still being shaped. */
+const REQUIRE_PIN = false;
 const ADMIN_PIN = "1201";
 const PIN_UNLOCK_KEY = "pbs_pin_unlocked";
 
 function pinStillValid(){ return localStorage.getItem(PIN_UNLOCK_KEY) === "true"; }
-function unlocked(){ return pinStillValid(); }
+function unlocked(){ return REQUIRE_PIN ? pinStillValid() : true; }
 
 let pinActionInFlight = false;
 async function withPin(action){
@@ -559,7 +564,7 @@ async function withPin(action){
     pinActionInFlight = true;
     try{ await action(); } finally{ pinActionInFlight = false; }
   };
-  if(pinStillValid()){ await guarded(); return; }
+  if(!REQUIRE_PIN || pinStillValid()){ await guarded(); return; }
   showPinModal(guarded);
 }
 function showPinModal(action){
@@ -748,10 +753,10 @@ function topbar(){
         <h1>Product Box Size</h1>
       </span>
     </div>
-    <div class="who">
+    ${REQUIRE_PIN ? `<div class="who">
       <span class="pill ${on?'sold':'unsold'}">${on?'Unlocked':'View Only'}</span>
       ${on ? '<button onclick="lockNow()">Lock</button>' : '<button class="primary" onclick="unlockOnly()">Unlock</button>'}
-    </div>
+    </div>` : ''}
   </div>`;
 }
 async function render(){
