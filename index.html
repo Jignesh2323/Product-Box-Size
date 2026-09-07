@@ -1783,7 +1783,24 @@ function removeBoxDraftRow(i){
   if(!boxDraft.length) boxDraft=[{box_dimension:'',unit_in_box:''}];
   renderBoxEditor();
 }
-function resetProductForm(){ editingProductId = null; boxDraft = []; imageDraft = null; render(); }
+/* Re-render par page upar mat bhaago — jahan the wahin, aur di hui row saamne. */
+async function renderKeepingScroll(productId){
+  const y = window.scrollY;
+  await render();
+  window.scrollTo(0, y);
+  if(productId == null) return;
+  const rowEl = [...document.querySelectorAll('#products-list .prod-card')]
+    .find(c => c.querySelector('[onclick="editProduct(' + productId + ')"]'));
+  if(rowEl){
+    const r = rowEl.getBoundingClientRect();
+    if(r.top < 0 || r.bottom > window.innerHeight) rowEl.scrollIntoView({block:'center'});
+  }
+}
+async function resetProductForm(){
+  const id = editingProductId;
+  editingProductId = null; boxDraft = []; imageDraft = null;
+  await renderKeepingScroll(id);
+}
 async function editProduct(id){
   await withPin(async ()=>{
     const p = productsCache.find(x=>x.id===id);
@@ -1852,16 +1869,9 @@ async function saveProduct(){
     // Save ke baad page upar mat bhaago — jahan the wahin raho, aur jo row
     // abhi save hui wo saamne rahe (photo upload karte waqt 192 row me
     // baar-baar upar se neeche aana padta tha).
-    const savedId = productId, y = window.scrollY;
+    const savedId = productId;
     editingProductId = null; boxDraft = []; imageDraft = null;
-    await render();
-    window.scrollTo(0, y);
-    const rowEl = [...document.querySelectorAll('#products-list .prod-card')]
-      .find(c => c.querySelector('[onclick="editProduct(' + savedId + ')"]'));
-    if(rowEl){
-      const r = rowEl.getBoundingClientRect();
-      if(r.top < 0 || r.bottom > window.innerHeight) rowEl.scrollIntoView({block:'center'});
-    }
+    await renderKeepingScroll(savedId);
   });
 }
 async function deleteProduct(id){
