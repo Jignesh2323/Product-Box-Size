@@ -853,9 +853,10 @@ function fmtQty(n){ return n === null || n === undefined ? '—' : Number(n).toL
    tab discontinued maana jaata hai jab uske SAARE live item us list me hon —
    CDSA ka ek variant band ho to poora CDSA band nahi kehlata. */
 function isDiscontinued(productId){
-  // Live aur band-par-stock waale dono gine jaate hain: Vaccum Sealer band
-  // bhi hai aur discontinued bhi — wo DISCONTINUED hi kehlayega.
-  const rows = vyaparRowsFor(productId, true).filter(v => v.is_active !== false || (num(v.current_stock) || 0) > 0);
+  // Jude hue SAARE item dekho — live, band, stock ho ya na ho. Aapne
+  // discontinue lagaya to product DISCONTINUED hi kehlayega, chahe Vyapar me
+  // wo item band aur khaali kyun na ho.
+  const rows = vyaparRowsFor(productId, true);
   return rows.length > 0 && rows.every(v => v.is_discontinued);
 }
 /* Kam stock: 10 se neeche (0 samet). Discontinued product isme nahi ginte —
@@ -1249,7 +1250,16 @@ function stockLineHtml(p){
       </div>`;
     }
     // Link hai par ek bhi item live nahi aur stock bhi nahi — ye "joda nahi"
-    // se alag baat hai, alag hi likho.
+    // se alag baat hai. Aur agar aapne discontinue lagaya hai to bas
+    // DISCONTINUED — "live nahi" ki baat hi nahi.
+    if(dead && isDiscontinued(p.id)){
+      return `<div class="stock-line disc" onclick="setTab('vyapar')">
+        <span class="lbl-icon">⛔</span>
+        <span class="st-qty" style="text-decoration:none">0</span>
+        <span style="font-size:12px; color:var(--ink-soft)">stock</span>
+        <span class="st-tag">DISCONTINUED</span>
+      </div>`;
+    }
     return `<div class="stock-line zero" onclick="setTab('vyapar')">
       <span class="lbl-icon">${dead ? '⛔' : '🔗'}</span>
       <span class="st-qty">${dead ? 'Vyapar માં હવે લાઇવ નથી' : 'Vyapar સાથે જોડાયેલી નથી'}</span>
@@ -2003,7 +2013,8 @@ function paintVyaparList(){
       <div class="link-row" style="background:none; padding:0; margin:0">
         <span class="lr-name">${esc(p.name)}</span>
         ${linksFor(p.id).length
-          ? `<span class="pill sold">✓ જોડાયેલી${rows.length ? ' · ' + fmtQty(total) + ' સ્ટોક' : ' · લાઇવ નથી'}</span>
+          ? `<span class="pill ${isDiscontinued(p.id) ? 'unsold' : 'sold'}">✓ જોડાયેલી${
+                isDiscontinued(p.id) ? ' · ⛔ Discontinued' : (rows.length ? ' · ' + fmtQty(total) + ' સ્ટોક' : ' · લાઇવ નથી')}</span>
              <button onclick="openPicker(${p.id})" title="બીજું Vyapar નામ ઉમેરો" style="min-height:32px; padding:4px 10px; font-size:12px">+ બીજું નામ</button>`
           : `<span class="pill unsold">જોડાયેલી નથી</span>
              <button class="primary" onclick="openPicker(${p.id})">+ Vyapar નામ જોડો</button>`}
