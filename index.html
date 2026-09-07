@@ -749,7 +749,10 @@ async function loadVyapar(force){
   ]);
   if(vi.error) return {error: vi.error};
   if(li.error) return {error: li.error};
-  vyaparCache = vi.data || [];
+  // Sirf wahi item jo Vyapar me LIVE hain. Band (inactive) item yahin chhod
+  // dete hain — na picker me, na breakdown me, na kisi ginti me. Vyapar khud
+  // unhe list me nahi dikhata, to app bhi nahi dikhayega.
+  vyaparCache = (vi.data || []).filter(v => v.is_active !== false);
   linksCache  = li.data || [];
   vyaparIndex = {};
   vyaparCache.forEach(v => { vyaparIndex[v.item_name.toLowerCase()] = v; });
@@ -1104,22 +1107,21 @@ function productCardHtml(p, opts){
 function stockLineHtml(p){
   const rows = vyaparRowsFor(p.id);
   if(!rows.length){
+    // Link hai par ek bhi item live nahi (jaise 4 Pcs Pet Groom Kit band ho
+    // gaya) — ye "joda nahi" se alag baat hai, alag hi likho.
+    const dead = linksFor(p.id).length > 0;
     return `<div class="stock-line zero" onclick="setTab('vyapar')">
-      <span class="lbl-icon">🔗</span>
-      <span class="st-qty">Vyapar સાથે જોડાયેલી નથી</span>
-      <span class="st-sub">જોડવા માટે દબાવો</span>
+      <span class="lbl-icon">${dead ? '⛔' : '🔗'}</span>
+      <span class="st-qty">${dead ? 'Vyapar માં હવે લાઇવ નથી' : 'Vyapar સાથે જોડાયેલી નથી'}</span>
+      <span class="st-sub">${dead ? 'લિંક બદલવા દબાવો' : 'જોડવા માટે દબાવો'}</span>
     </div>`;
   }
   const total = stockFor(p.id);
-  const active = rows.filter(v => v.is_active !== false);
-  const inactive = rows.length - active.length;
-  const neg = active.some(v => (num(v.current_stock) || 0) < 0);
-  // Ek hi item ho par wo inactive ya minus me ho, to bhi breakdown dikhao —
-  // warna number akela dikhega aur pata nahi chalega kyun ajeeb hai.
-  const showParts = rows.length > 1 || inactive || neg;
-  const sub = rows.length > 1
-    ? `${active.length} item${inactive ? ' · ' + inactive + ' બંધ' : ''} ▾`
-    : (inactive ? 'બંધ ▾' : (neg ? 'માઇનસ ▾' : 'Vyapar'));
+  const neg = rows.some(v => (num(v.current_stock) || 0) < 0);
+  // Ek hi item ho par minus me ho, to bhi breakdown dikhao — warna number
+  // akela dikhega aur pata nahi chalega kyun laal hai.
+  const showParts = rows.length > 1 || neg;
+  const sub = rows.length > 1 ? `${rows.length} item ▾` : (neg ? 'માઇનસ ▾' : 'Vyapar');
   return `<div class="stock-line ${total > 0 ? '' : 'zero'}${neg ? ' neg' : ''}" onclick="toggleStockParts(${p.id})">
       <span class="lbl-icon">📊</span>
       <span class="st-qty">${fmtQty(total)}</span>
@@ -1127,13 +1129,10 @@ function stockLineHtml(p){
       <span class="st-sub">${sub}</span>
     </div>
     ${showParts ? `<div class="stock-parts" id="stockparts_${p.id}" style="display:none">
-      ${rows.map(v=>{
-        const off = v.is_active === false, minus = (num(v.current_stock) || 0) < 0;
-        return `<div class="stock-part${off ? ' off' : ''}">
-          <span class="sp-name">${esc(v.item_name)}${off ? '<span class="sp-tag">Vyapar માં બંધ · ગણતરીમાં નથી</span>' : ''}</span>
-          <span class="sp-qty${minus ? ' minus' : ''}">${fmtQty(v.current_stock)}</span>
-        </div>`;
-      }).join('')}
+      ${rows.map(v=>`<div class="stock-part">
+          <span class="sp-name">${esc(v.item_name)}</span>
+          <span class="sp-qty${(num(v.current_stock) || 0) < 0 ? ' minus' : ''}">${fmtQty(v.current_stock)}</span>
+        </div>`).join('')}
     </div>` : ''}`;
 }
 function toggleStockParts(id){
@@ -1764,7 +1763,7 @@ async function renderVyaparTab(box){
         <div class="stat stat-good"><div class="num">${linked}</div><div class="lbl">જોડાઈ ગઈ</div></div>
         <div class="stat ${productsCache.length-linked ? 'stat-bad' : 'stat-neutral'}">
           <div class="num">${productsCache.length - linked}</div><div class="lbl">બાકી છે</div></div>
-        <div class="stat stat-info"><div class="num">${vyaparCache.length}</div><div class="lbl">Vyapar item</div></div>
+        <div class="stat stat-info"><div class="num">${vyaparCache.length}</div><div class="lbl">લાઇવ Vyapar item</div></div>
       </div>
       <p class="config-note" style="margin:12px 0 0">
         ${synced ? '📅 Vyapar માંથી છેલ્લે લીધેલું: <b>' + esc(synced.toLocaleString('en-IN')) + '</b>. આ હજી જાતે અપડેટ થતું નથી — AVEDIA PC થી sync જોડવાનું બાકી છે.'
@@ -1819,11 +1818,11 @@ function paintVyaparList(){
       ${rows.length ? `<div class="stock-parts">
         ${linksFor(p.id).map(l=>{
           const v = l.is_prefix ? null : vyaparIndex[String(l.pattern).toLowerCase()];
-          const off = v && v.is_active === false;
-          return `<div class="stock-part${off ? ' off' : ''}">
+          // v nahi mila = ya to Vyapar me band ho gaya, ya naam hi hata diya.
+          // Dono me ye link ab kisi kaam ka nahi — dikhao taaki ✕ se hata sakein.
+          return `<div class="stock-part${v ? '' : ' off'}">
             <span class="sp-name">${l.is_prefix ? esc(l.pattern) + '…' : esc(l.pattern)}${
-              v ? (off ? '<span class="sp-tag">Vyapar માં બંધ · ગણતરીમાં નથી</span>' : '')
-                : '<span class="mx-sub">Vyapar માં આ નામ હવે નથી</span>'}</span>
+              v ? '' : '<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span>'}</span>
             <span class="sp-qty${v && (num(v.current_stock)||0) < 0 ? ' minus' : ''}">${v ? fmtQty(v.current_stock) : ''}</span>
             <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
           </div>`;
@@ -1864,8 +1863,8 @@ function paintPickerHits(){
   linksCache.forEach(l => { if(l.product_id === pickerFor) taken[String(l.pattern).toLowerCase()] = 1; });
   const hits = vyaparCache.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
   wrap.innerHTML = hits.length
-    ? hits.map(v=>`<div class="link-hit${v.is_active === false ? ' off' : ''}" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
-        <span>${markHit(v.item_name, pickerTerm.trim())}${v.is_active === false ? '<span class="sp-tag">Vyapar માં બંધ</span>' : ''}</span>
+    ? hits.map(v=>`<div class="link-hit" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
+        <span>${markHit(v.item_name, pickerTerm.trim())}</span>
         <span class="lh-qty">${fmtQty(v.current_stock)}</span>
       </div>`).join('')
     : `<p class="empty" style="text-align:center">"${esc(pickerTerm)}" Vyapar માં મળ્યું નથી.</p>`;
