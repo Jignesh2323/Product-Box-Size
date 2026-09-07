@@ -346,17 +346,6 @@ a{color:var(--maroon);}
 .spec .v{font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700; color:var(--ink); margin-top:2px; word-break:break-all;}
 .spec .v.dim{color:#1D4ED8;}
 .spec .v.calc{color:var(--maroon);}
-.spec-input{border:1px solid var(--maroon); background:var(--white-card);}
-.spec-input .k{color:var(--maroon);}
-.fba-input{
-  font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700;
-  width:100%; padding:0; min-height:22px; margin-top:2px;
-  border:none; background:transparent; color:var(--maroon);
-}
-.fba-input:focus{outline:none; box-shadow:none;}
-.fba-input::placeholder{color:var(--ink-soft); font-weight:500;}
-.fba-input::-webkit-outer-spin-button,
-.fba-input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
 .spec .v.blank{color:var(--ink-soft); font-weight:500;}
 :root[data-theme="dark"] .spec .v.dim{color:#7DA6FF;}
 
@@ -378,6 +367,57 @@ a{color:var(--maroon);}
 
 .prod-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px;}
 .prod-actions button{padding:7px 13px; min-height:38px; font-size:12.5px;}
+
+/* ---- Segmented switch: the Search tab's two ways of asking ---- */
+.segmented{
+  display:flex; gap:4px; padding:4px; margin-bottom:14px;
+  background:var(--paper-dark); border-radius:14px;
+}
+.segmented button{
+  flex:1; min-height:42px; padding:8px 6px; border:none; border-radius:10px;
+  background:transparent; color:var(--ink-soft); box-shadow:none;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:700;
+}
+.segmented button.on{background:var(--white-card); color:var(--maroon); box-shadow:var(--shadow);}
+
+/* ---- Product Mix: the FBA shipment being counted ---- */
+.add-hit, .mix-row{
+  display:flex; align-items:center; gap:10px; margin-top:8px;
+  padding:10px 12px; border-radius:var(--radius-sm); background:var(--paper-dark);
+}
+.add-hit .ah-name, .mix-row .mx-name{flex:1; min-width:0; font-weight:600; font-size:14px; word-break:break-word;}
+.mx-sub{
+  display:block; margin-top:1px; font-family:'IBM Plex Mono',monospace;
+  font-size:11px; font-weight:500; color:var(--ink-soft);
+}
+.add-hit button{min-height:36px; padding:6px 13px; font-size:12.5px; flex:0 0 auto;}
+.mix-qty{
+  flex:0 0 64px; width:64px; text-align:center; margin:0;
+  font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700;
+  padding:6px; min-height:40px; border:1px solid var(--maroon); border-radius:10px;
+  background:var(--white-card); color:var(--maroon);
+}
+.mix-qty::-webkit-outer-spin-button,
+.mix-qty::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+.mix-row .mx-wt{
+  flex:0 0 auto; min-width:62px; text-align:right;
+  font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px; color:var(--maroon);
+}
+.mix-row .mx-del{
+  flex:0 0 auto; min-height:34px; padding:4px 8px; font-size:14px;
+  background:transparent; border:none; box-shadow:none; color:var(--ink-soft);
+}
+.mix-head{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.mix-head h3{margin:0;}
+.mix-head button{min-height:34px; padding:5px 11px; font-size:12px; color:var(--danger); background:transparent; box-shadow:none;}
+.mix-total{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin-top:14px; padding:14px 16px; border-radius:var(--radius-sm);
+  background:linear-gradient(135deg,#3730A3,var(--maroon)); color:#fff;
+}
+.mix-total .t-lbl{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; opacity:.82;}
+.mix-total .t-sub{font-size:11.5px; opacity:.85; margin-top:3px;}
+.mix-total .t-val{font-family:'IBM Plex Mono',monospace; font-size:25px; font-weight:800; white-space:nowrap;}
 
 .prod-thumb{
   flex:0 0 auto; width:52px; height:52px; border-radius:12px; object-fit:cover;
@@ -445,6 +485,9 @@ const root = document.getElementById('root');
 let state = { user:null, tab:'search' };
 let productsCache = [];
 let searchTerm = '';
+let searchMode = 'box';   // Search tab: 'box' = one product ka poora box, 'mix' = FBA mix
+let mixTerm = '';         // Product Mix panel ka apna search box
+let mixList = [];         // [{id, units}] — jo shipment abhi count ho raha hai
 let editingProductId = null;
 let editingBagId = null;
 let boxDraft = [];        // rows in the Add/Edit product form's box list
@@ -471,28 +514,18 @@ function boxWeight(p, b){
   const u = num(b.unit_in_box), w = num(p.unit_weight);
   return (u===null || w===null) ? null : u*w;
 }
-/* FBA Unit is a scratch calculator, not a stored fact — the sheet leaves
-   column F empty and it gets typed fresh whenever a part-box goes to FBA
-   (a 30-piece box with only 15 pieces going out). So the number typed on a
-   card lives in memory for the session only, and a blank reads as 0 rather
-   than a dash: that is the answer to "kitna weight jaayega" before anything
-   is counted. */
-let fbaScratch = {};
-function fbaUnitFor(p){
-  if(fbaScratch[p.id] !== undefined) return fbaScratch[p.id];
-  return p.fba_unit == null ? '' : p.fba_unit;
-}
+/* FBA Unit is a scratch number, not a fact about the product — the sheet
+   leaves column F empty and it gets typed fresh whenever a part-box goes to
+   FBA (a 30-piece box with only 15 pieces going out). So it lives only in
+   the Product Mix panel now, per mix row, and a blank reads as 0 rather than
+   a dash: that is the answer to "kitna weight jaayega" before anything is
+   counted. The Search box card and the Products tab don't show it at all. */
+function fbaUnitFor(p){ return p.fba_unit == null ? '' : p.fba_unit; }
 function fbaWeight(p, unitsOverride){
   const raw = unitsOverride !== undefined ? unitsOverride : fbaUnitFor(p);
   const f = num(raw), w = num(p.unit_weight);
   if(w === null) return null;
   return (f === null ? 0 : f) * w;
-}
-function onFbaInput(id, val){
-  fbaScratch[id] = val;
-  const p = productsCache.find(x => x.id === id);
-  const out = document.getElementById('fbawt_' + id);
-  if(p && out) out.textContent = kg(fbaWeight(p, val)) || '—';
 }
 function friendlyDbError(error){
   if(!error) return '';
@@ -663,10 +696,31 @@ function renderImagePicker(){
     `<label class="file-btn" id="img-pick-label" for="p_img">📷 ${imageDraft ? 'Photo Badlo' : 'Product Photo Upload Karo'}</label>
      <input id="p_img" type="file" accept="image/*" style="display:none" onchange="onProductImagePick(this)">`;
 }
+/* The photo viewer pushes a history entry, so the phone's Back button closes
+   the photo instead of walking out of the app — on Android that back press
+   was landing outside the PWA entirely. Tapping the photo closes it the same
+   way (history.back), so both routes leave the history depth where it was. */
+let lightboxOpen = false;
 function openLightbox(url){
-  const box = el('<div class="lightbox" onclick="this.remove()"><img src="' + esc(url) + '" alt=""></div>');
+  if(lightboxOpen) return;
+  const box = el('<div class="lightbox" id="lightbox" onclick="closeLightbox()"><img src="' + esc(url) + '" alt=""></div>');
   document.body.appendChild(box);
+  lightboxOpen = true;
+  history.pushState({pbsLightbox:true}, '');
 }
+function closeLightbox(){
+  const box = document.getElementById('lightbox');
+  if(box) box.remove();
+  if(!lightboxOpen) return;
+  lightboxOpen = false;
+  if(history.state && history.state.pbsLightbox) history.back();
+}
+window.addEventListener('popstate', ()=>{
+  if(!lightboxOpen) return;   // Back press: entry already gone, just close the photo
+  lightboxOpen = false;
+  const box = document.getElementById('lightbox');
+  if(box) box.remove();
+});
 
 /* ---------------- shared product card ---------------- */
 function markHit(text, term){
@@ -693,18 +747,9 @@ function productCardHtml(p, opts){
     </h3>
     <div class="spec-grid">
       ${specHtml('Unit Weight', kg(p.unit_weight))}
-      <div class="spec spec-input">
-        <div class="k">FBA Unit</div>
-        <input class="fba-input calc-safe" type="number" step="1" min="0" inputmode="numeric"
-               placeholder="0" value="${esc(fbaUnitFor(p))}"
-               oninput="onFbaInput(${p.id}, this.value)">
-      </div>
-      <div class="spec">
-        <div class="k">FBA Weight</div>
-        <div class="v calc" id="fbawt_${p.id}">${kg(fbaWeight(p)) || '—'}</div>
-      </div>
-      ${specHtml('Item Dimension', p.item_dimension, 'dim')}
-      ${specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
+      ${opts.itemDims === false ? '' :
+        specHtml('Item Dimension', p.item_dimension, 'dim') +
+        specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
       ${p.notes ? specHtml('Note', p.notes) : ''}
     </div>
     ${boxes.length ? boxes.map((b,i)=>`<div class="box-line">
@@ -831,19 +876,46 @@ async function renderTabContent(){
   }
 }
 
-/* ---------------- SEARCH tab ---------------- */
+/* ---------------- SEARCH tab ----------------
+   Two ways of asking, one switch between them:
+     Product Box — ek product, uska poora box detail (sheet jaisa).
+     Product Mix — kai product ek saath, FBA ka total weight.
+   FBA Unit sirf Mix me hai; box wale card par aur Products tab par nahi,
+   kyunki wo number product ka nahi, us shipment ka hota hai. */
 async function renderSearchTab(box){
   const {error} = await loadProducts();
   box.innerHTML = `
+    <div class="segmented">
+      <button id="seg-box" class="${searchMode==='box'?'on':''}" onclick="setSearchMode('box')">📦 Product Box</button>
+      <button id="seg-mix" class="${searchMode==='mix'?'on':''}" onclick="setSearchMode('mix')">🧮 Product Mix${mixList.length?' ('+mixList.length+')':''}</button>
+    </div>
+    ${error?`<div class="msg error">${esc(friendlyDbError(error))}</div>`:''}
+    <div id="search-panel"></div>`;
+  paintSearchPanel();
+}
+function setSearchMode(m){
+  searchMode = m;
+  const b = document.getElementById('seg-box'), x = document.getElementById('seg-mix');
+  if(b) b.classList.toggle('on', m === 'box');
+  if(x) x.classList.toggle('on', m === 'mix');
+  paintSearchPanel();
+}
+function paintSearchPanel(){
+  const panel = document.getElementById('search-panel');
+  if(!panel) return;
+  if(searchMode === 'mix') paintMixPanel(panel);
+  else paintBoxPanel(panel);
+}
+function paintBoxPanel(panel){
+  panel.innerHTML = `
     <div class="card">
       <div class="big-search">
         <span class="mag">🔍</span>
         <input id="q" class="search-safe" placeholder="Product ka naam type karo…" value="${esc(searchTerm)}" autocomplete="off">
       </div>
       <p class="config-note" style="margin:10px 0 0; text-align:center;">
-        Sheet ke SEARCH box jaisa hi — naam type karte hi neeche result aa jayega.
+        Sheet ke SEARCH box jaisa hi — naam type karte hi poora box detail aa jayega.
       </p>
-      ${error?`<div class="msg error" style="margin-top:12px">${esc(friendlyDbError(error))}</div>`:''}
     </div>
     <div id="search-results"></div>`;
   const input = document.getElementById('q');
@@ -869,8 +941,144 @@ function paintSearchResults(){
   const hits = productsCache.filter(p => matchProduct(p, t));
   wrap.innerHTML = hits.length
     ? `<p class="result-count">${hits.length} result${hits.length>1?'s':''}</p>` +
-      hits.map(p=>productCardHtml(p, {term: searchTerm.trim()})).join('')
+      hits.map(p=>productCardHtml(p, {term: searchTerm.trim(), itemDims:false})).join('')
     : `<div class="card"><p class="empty">"${esc(searchTerm)}" naam ka koi product nahi mila.</p></div>`;
+}
+
+/* ---------------- Product Mix (FBA) ----------------
+   A mix is built over minutes while someone walks the shelves, so it
+   survives a refresh in localStorage — losing a half-counted shipment to
+   an accidental reload would be the worst part of doing this on a phone. */
+const MIX_KEY = 'pbs_fba_mix';
+function loadMix(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(MIX_KEY) || '[]');
+    mixList = Array.isArray(raw) ? raw.filter(r => r && r.id != null) : [];
+  }catch(_){ mixList = []; }
+}
+function saveMix(){ try{ localStorage.setItem(MIX_KEY, JSON.stringify(mixList)); }catch(_){} }
+function refreshMixBadge(){
+  const x = document.getElementById('seg-mix');
+  if(x) x.textContent = '🧮 Product Mix' + (mixList.length ? ' (' + mixList.length + ')' : '');
+}
+function paintMixPanel(panel){
+  panel.innerHTML = `
+    <div class="card">
+      <div class="big-search">
+        <span class="mag">🔍</span>
+        <input id="mixq" class="search-safe" placeholder="Product dhundo aur mix me daalo…" value="${esc(mixTerm)}" autocomplete="off">
+      </div>
+      <p class="config-note" style="margin:10px 0 0; text-align:center;">
+        Jitne product FBA me ja rahe hain sab add karo — har ek ka unit likhte hi total weight jud jayega.
+      </p>
+      <div id="mix-hits"></div>
+    </div>
+    <div id="mix-list"></div>`;
+  const input = document.getElementById('mixq');
+  input.addEventListener('input', ()=>{ mixTerm = input.value; paintMixHits(); });
+  paintMixHits();
+  paintMixList();
+}
+function unitWeightLine(p){
+  const w = kg(p.unit_weight);
+  return '<span class="mx-sub">' + (w ? esc(w) + ' / unit' : 'unit weight bhara nahi hai') + '</span>';
+}
+function paintMixHits(){
+  const wrap = document.getElementById('mix-hits');
+  if(!wrap) return;
+  const t = mixTerm.trim().toLowerCase();
+  if(!t){ wrap.innerHTML = ''; return; }
+  const hits = productsCache.filter(p => matchProduct(p, t)).slice(0, 15);
+  if(!hits.length){
+    wrap.innerHTML = `<p class="empty" style="text-align:center">"${esc(mixTerm)}" naam ka koi product nahi mila.</p>`;
+    return;
+  }
+  wrap.innerHTML = hits.map(p=>`<div class="add-hit">
+      <span class="ah-name">${markHit(p.name, mixTerm.trim())}${unitWeightLine(p)}</span>
+      ${mixList.some(r=>r.id===p.id)
+        ? '<span class="pill sold">✓ Mix me hai</span>'
+        : `<button class="primary" onclick="addToMix(${p.id})">+ Add</button>`}
+    </div>`).join('');
+}
+function addToMix(id){
+  if(mixList.some(r => r.id === id)) return;
+  mixList.push({id, units: 1});   // 1 se shuru, taaki total turant matlab rakhe
+  saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
+}
+function removeFromMix(id){
+  mixList = mixList.filter(r => r.id !== id);
+  saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
+}
+function clearMix(){
+  if(!mixList.length) return;
+  if(!confirm('Poora mix hata dein?')) return;
+  mixList = [];
+  saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
+}
+function onMixUnits(id, val){
+  const row = mixList.find(r => r.id === id);
+  if(!row) return;
+  row.units = val;
+  saveMix();
+  const p = productsCache.find(x => x.id === id);
+  const out = document.getElementById('mixwt_' + id);
+  if(p && out) out.textContent = kg(fbaWeight(p, val)) || '—';
+  paintMixTotal();
+}
+function paintMixList(){
+  const wrap = document.getElementById('mix-list');
+  if(!wrap) return;
+  if(!mixList.length){
+    wrap.innerHTML = `<div class="card"><p class="empty">
+      Mix abhi khaali hai. Upar naam dhundo aur "+ Add" dabao — har product ka
+      FBA unit likhte hi sabka total weight neeche jud jayega.</p></div>`;
+    return;
+  }
+  const rows = mixList.map(r=>{
+    const p = productsCache.find(x => x.id === r.id);
+    if(!p) return '';
+    return `<div class="mix-row">
+      <span class="mx-name">${esc(p.name)}${unitWeightLine(p)}</span>
+      <input class="mix-qty calc-safe" type="number" step="1" min="0" inputmode="numeric"
+             value="${esc(r.units)}" oninput="onMixUnits(${p.id}, this.value)">
+      <span class="mx-wt" id="mixwt_${p.id}">${kg(fbaWeight(p, r.units)) || '—'}</span>
+      <button class="mx-del" onclick="removeFromMix(${p.id})">✕</button>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="card">
+    <div class="mix-head">
+      <h3>🧮 FBA Mix</h3>
+      <button onclick="clearMix()">Sab hatao</button>
+    </div>
+    ${rows}
+    <div id="mix-total"></div>
+  </div>`;
+  paintMixTotal();
+}
+function paintMixTotal(){
+  const wrap = document.getElementById('mix-total');
+  if(!wrap) return;
+  let weight = 0, units = 0, unknown = 0;
+  mixList.forEach(r=>{
+    const p = productsCache.find(x => x.id === r.id);
+    if(!p) return;
+    const u = Math.max(0, num(r.units) || 0);
+    units += u;
+    const w = num(p.unit_weight);
+    // Ek bhi product ka unit weight blank ho to uska weight guess nahi karte —
+    // total ke neeche saaf likh dete hain ki wo isme joda nahi gaya.
+    if(w === null){ if(u > 0) unknown++; }
+    else weight += u * w;
+  });
+  wrap.innerHTML = `<div class="mix-total">
+      <span>
+        <div class="t-lbl">Total FBA Weight</div>
+        <div class="t-sub">${mixList.length} product · ${fmtWt(units)} unit</div>
+      </span>
+      <span class="t-val">${esc(fmtWt(weight) || '0')} kg</span>
+    </div>` +
+    (unknown ? `<p class="config-note" style="margin:8px 0 0; color:var(--warning)">
+      ⚠️ ${unknown} product ka unit weight bhara nahi hai, isliye uska weight is total me nahi juda.</p>` : '');
 }
 
 /* ---------------- PRODUCTS tab (add / edit / delete) ---------------- */
@@ -891,12 +1099,9 @@ async function renderProductsTab(box){
 
         <div id="img-picker"></div>
 
-        <div class="form-row">
-          <div class="field"><label>Unit Weight (kg)</label>
-            <input id="p_uw" type="number" step="0.001" inputmode="decimal" value="${editing&&editing.unit_weight!=null?editing.unit_weight:''}"></div>
-          <div class="field"><label>FBA Unit</label>
-            <input id="p_fba" type="number" step="1" inputmode="numeric" value="${editing&&editing.fba_unit!=null?editing.fba_unit:''}"></div>
-        </div>
+        <div class="field"><label>Unit Weight (kg)</label>
+          <input id="p_uw" type="number" step="0.001" inputmode="decimal" style="width:100%"
+                 value="${editing&&editing.unit_weight!=null?editing.unit_weight:''}"></div>
         <div class="form-row">
           <div class="field"><label>Item Dimension</label>
             <input id="p_idim" value="${esc(editing?(editing.item_dimension||''):'')}" placeholder="19.5x11x2.5"></div>
@@ -977,11 +1182,9 @@ async function saveProduct(){
     const name = document.getElementById('p_name').value.trim();
     if(!name){ toast('Product name likhna zaroori hai.', 'error'); return; }
     const uw = document.getElementById('p_uw').value;
-    const fba = document.getElementById('p_fba').value;
     const payload = {
       name,
       unit_weight: uw === '' ? null : Number(uw),
-      fba_unit:    fba === '' ? null : parseInt(fba, 10),
       item_dimension:     document.getElementById('p_idim').value.trim()  || null,
       item_box_dimension: document.getElementById('p_ibdim').value.trim() || null,
       notes:              document.getElementById('p_notes').value.trim() || null,
@@ -1307,6 +1510,7 @@ function copySetupSql(){
 
 /* ---------------- boot ---------------- */
 (async function boot(){
+  loadMix();
   state.tab = getDefaultTab();
   await render();
 })();
