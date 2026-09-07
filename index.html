@@ -897,7 +897,9 @@ function lowStockProducts(){
   // ye kam isliye hai ki band kiya gaya hai, khatam nahi hua.
   const out = [];
   productsCache.forEach(p=>{
-    const rows = vyaparRowsFor(p.id);
+    // Band (inactive) Vyapar item bhi — card par uska stock dikhta hai, to
+    // bell me bhi ginega (4-Pet Groom Kit: item band, 2 pade hain).
+    const rows = vyaparRowsFor(p.id, true);
     if(!rows.length) return;
     const pDisc = isDiscontinued(p.id);
     if(rows.length === 1){
