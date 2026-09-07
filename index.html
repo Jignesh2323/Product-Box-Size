@@ -317,6 +317,46 @@ a{color:var(--maroon);}
   .grid-stats-2col .stat{flex:1 1 calc(50% - 4px);}
 }
 
+/* ---- PC view ----
+   Same single page, different shape once there is real width: the nav moves
+   from the thumb's reach at the bottom to a bar across the top, and result
+   cards stop being a one-file column and fill the screen in a grid. The card
+   markup is untouched — only where things sit changes. */
+@media (min-width:900px){
+  .bottom-nav{
+    top:0; bottom:auto; max-width:none; justify-content:center; gap:4px;
+    padding:8px 24px; border-top:none; border-bottom:1px solid var(--rule);
+    box-shadow:0 2px 14px rgba(20,22,43,.06);
+  }
+  .nav-item{
+    flex:0 0 auto; flex-direction:row; gap:8px; padding:9px 18px; font-size:13.5px;
+  }
+  .nav-item .nav-icon{width:auto; height:auto; font-size:16px; border-radius:8px; padding:2px 4px;}
+  .nav-item.active .nav-icon{transform:none;}
+  .nav-more{margin-left:8px;}
+  .more-menu{top:calc(100% + 10px); bottom:auto; right:0;}
+
+  .app{max-width:1180px; padding:74px 24px 48px;}
+  .hero-banner{
+    margin:12px 0 22px; border-radius:22px; padding:24px 28px 26px;
+  }
+  .hero-banner h1{font-size:25px;}
+
+  /* Results become a wall of cards instead of one long column. */
+  #search-results, #products-list{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(330px,1fr));
+    gap:14px; align-items:start;
+  }
+  #search-results > .result-count, #products-list > .result-count,
+  #search-results > .card:only-child, #products-list > .card:only-child{grid-column:1/-1;}
+  #search-results > .card, #products-list > .card{margin-bottom:0;}
+
+  /* The two big single-column panels stay readable, not stretched. */
+  .segmented{max-width:560px; margin-left:auto; margin-right:auto;}
+  #mix-list, #search-panel > .card:first-child{max-width:760px; margin-left:auto; margin-right:auto;}
+  .big-search input{font-size:16px;}
+}
+
 @media print{
   .bottom-nav, .hero-banner .who, .form-row, .flat-actions, button, .nav-more{display:none !important;}
   .app{padding-bottom:0;}
