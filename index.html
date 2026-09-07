@@ -329,10 +329,11 @@ a{color:var(--maroon);}
    cards stop being a one-file column and fill the screen in a grid. The card
    markup is untouched — only where things sit changes. */
 @media (min-width:900px){
+  /* Nav PC par bhi neeche hi rehti hai, mobile jaisi — sirf tab bade hain
+     aur poori chaudai me beech me aate hain. */
   .bottom-nav{
-    top:0; bottom:auto; max-width:none; width:100%; justify-content:center; gap:6px;
-    padding:10px 24px; border-top:none; border-bottom:1px solid var(--rule);
-    box-shadow:0 2px 14px rgba(20,22,43,.06);
+    max-width:none; width:100%; justify-content:center; gap:6px;
+    padding:10px 24px calc(10px + env(safe-area-inset-bottom));
   }
   .nav-item{
     flex:0 0 auto; flex-direction:row; gap:10px; padding:13px 30px; font-size:15.5px;
@@ -343,13 +344,13 @@ a{color:var(--maroon);}
   .nav-item.active{background:#EEF2FF;}
   .nav-item.active .nav-icon{background:none; transform:none;}
   .nav-more{margin-left:8px;}
-  .more-menu{top:calc(100% + 10px); bottom:auto; right:0;}
+  .more-menu{right:0;}
   .more-menu-item{font-size:15px; padding:12px 15px;}
 
   /* Poori screen use karo — bade monitor par bhi dono taraf khaali patti nahi. */
-  .app{max-width:none; padding:88px 28px 48px;}
+  .app{max-width:none; padding:22px 28px calc(88px + env(safe-area-inset-bottom));}
   .hero-banner{
-    margin:12px 0 22px; border-radius:22px; padding:24px 28px 26px;
+    margin:0 0 22px; border-radius:22px; padding:24px 28px 26px;
   }
   .hero-banner h1{font-size:25px;}
 
@@ -398,7 +399,6 @@ a{color:var(--maroon);}
   /* Ek 1900px screen par form ke input 1800px chaude ho jaate the — ek naam
      ke liye aadha kamra. Form ko padhne layak chaudai par rok do; andar ke
      form-row apne aap teen-teen field ek line me le aate hain. */
-  .sticky-search{top:78px;}   /* upar wali fixed nav ke neeche */
 
   .accordion-body{max-width:1040px;}
   .accordion-body input, .accordion-body select, .accordion-body textarea{max-width:100%;}
@@ -477,6 +477,27 @@ a{color:var(--maroon);}
   flex:0 0 auto; width:22px; height:22px; border-radius:7px; background:#B45309; color:#fff;
   display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800;
 }
+
+/* ---- Box Size tab ---- */
+.bs-card{padding:0; overflow:hidden;}
+.bs-head{
+  display:flex; align-items:center; gap:10px; cursor:pointer;
+  padding:13px 16px;
+}
+.bs-head:hover{background:var(--paper-dark);}
+.bs-dim{
+  font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:16px; color:#B45309;
+  flex:1; min-width:0; word-break:break-all;
+}
+:root[data-theme="dark"] .bs-dim{color:#FBBF24;}
+.bs-caret{color:var(--ink-soft); font-size:12px;}
+.bs-body{padding:0 16px 12px;}
+.bs-item{
+  display:flex; align-items:center; gap:10px; padding:7px 0;
+  border-top:1px solid var(--rule); font-size:13.5px;
+}
+.bs-item .bs-name{flex:1; min-width:0; word-break:break-word;}
+.bs-item .bs-wt{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:12.5px; color:var(--ink-soft);}
 
 /* ---- Vyapar stock ---- */
 .stock-line{
@@ -827,6 +848,51 @@ async function withPin(action){
   if(!REQUIRE_PIN || pinStillValid()){ await guarded(); return; }
   showPinModal(guarded);
 }
+/* ---------------- Delete-only PIN ----------------
+   Add aur Edit khule hain, par delete wapas nahi aata — Deleted Items se
+   restore ho jata hai, phir bhi galti se dabne se bachana zaroori hai.
+   Isliye har delete par ye PIN poochha jaata hai, ek baar unlock karke
+   chhoda nahi jaata: yahi is gate ka poora matlab hai. */
+const DELETE_PIN = "2323";
+let deletePinInFlight = false;
+async function withDeletePin(action){
+  if(deletePinInFlight) return;
+  showDeletePinModal(async ()=>{
+    deletePinInFlight = true;
+    try{ await action(); } finally{ deletePinInFlight = false; }
+  });
+}
+function showDeletePinModal(action){
+  const old = document.getElementById('del-pin-modal'); if(old) old.remove();
+  const overlay = el(`<div class="modal-backdrop" id="del-pin-modal">
+    <div class="modal-box">
+      <h3>🗑️ Delete PIN</h3>
+      <p class="config-note">Delete karne ke liye PIN daalo. Har delete par poochha jayega.</p>
+      <div id="del-pin-msg"></div>
+      <input id="del-pin-input" type="password" inputmode="numeric" maxlength="6"
+             style="width:100%; letter-spacing:.3em; text-align:center; font-size:20px" autofocus>
+      <div class="modal-actions">
+        <button onclick="document.getElementById('del-pin-modal').remove();">Cancel</button>
+        <button class="danger" id="del-pin-submit">Delete</button>
+      </div>
+    </div>
+  </div>`);
+  document.body.appendChild(overlay);
+  const submit = async ()=>{
+    const pin = document.getElementById('del-pin-input').value.trim();
+    if(pin !== DELETE_PIN){
+      document.getElementById('del-pin-msg').innerHTML = '<div class="msg error">Galat PIN.</div>';
+      return;
+    }
+    overlay.remove();
+    await action();
+  };
+  document.getElementById('del-pin-submit').onclick = submit;
+  const input = document.getElementById('del-pin-input');
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+  setTimeout(()=>input.focus(), 30);
+}
+
 function showPinModal(action){
   const old = document.getElementById('pin-modal'); if(old) old.remove();
   const overlay = el(`<div class="modal-backdrop" id="pin-modal">
@@ -977,7 +1043,6 @@ function productCardHtml(p, opts){
       ${opts.itemDims === false ? '' :
         specHtml('Item Dimension', p.item_dimension, 'dim') +
         specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
-      ${p.notes ? specHtml('Note', p.notes) : ''}
     </div>
     <div class="box-col">
       <div class="box-stack">
@@ -1031,6 +1096,7 @@ function toggleStockParts(id){
 const TABS = [
   ['search','Search'],
   ['products','Products'],
+  ['boxsize','Box Size'],
   ['bags','Bags'],
   ['vyapar','Vyapar Stock'],
   ['deleted','Deleted Items'],
@@ -1038,7 +1104,7 @@ const TABS = [
 ];
 const HIDDEN_TAB_KEYS = ['vyapar','deleted','settings'];
 const NO_PIN_MORE_TABS = ['vyapar','settings'];
-const TAB_ICONS = { search:'🔍', products:'📦', bags:'🛍️', vyapar:'🔗', deleted:'♻️', settings:'⚙️' };
+const TAB_ICONS = { search:'🔍', products:'📦', boxsize:'📐', bags:'🛍️', vyapar:'🔗', deleted:'♻️', settings:'⚙️' };
 
 const BOX_LOGO = `<svg width="24" height="24" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <g stroke="#A67954" stroke-width="2.6" stroke-linejoin="round">
@@ -1128,6 +1194,7 @@ async function renderTabContent(){
   try{
     if(state.tab==='search')   return await renderSearchTab(box);
     if(state.tab==='products') return await renderProductsTab(box);
+    if(state.tab==='boxsize')  return await renderBoxSizeTab(box);
     if(state.tab==='bags')     return await renderBagsTab(box);
     if(state.tab==='vyapar')   return await renderVyaparTab(box);
     if(state.tab==='deleted')  return await renderDeletedTab(box);
@@ -1510,7 +1577,7 @@ async function saveProduct(){
   });
 }
 async function deleteProduct(id){
-  await withPin(async ()=>{
+  await withDeletePin(async ()=>{
     const p = productsCache.find(x=>x.id===id);
     if(!p) return;
     if(!confirm('"' + p.name + '" delete karna hai?\n\nDeleted Items tab se wapas restore kar sakte ho.')) return;
@@ -1529,6 +1596,84 @@ async function deleteProduct(id){
     toast('Delete ho gaya — Deleted Items se restore kar sakte ho.');
     await render();
   });
+}
+
+/* ---------------- BOX SIZE tab ----------------
+   Ulta sawaal: product se box nahi, box se product. Jitne alag alag Item Box
+   Dimension chal rahe hain unki list, har ek ke saath kitne product us box me
+   jaate hain. Kaunsa box kitna mangwana hai, ye yahin se dikh jaata hai. */
+let boxSizeTerm = '';
+let openBoxSize = null;
+
+async function renderBoxSizeTab(box){
+  const {error} = await loadProducts();
+  box.innerHTML = `
+    <div class="card">
+      <h3>📐 Box Size</h3>
+      <p class="config-note" style="margin-top:-4px">
+        Har Item Box Dimension ek baar, aur uske saath wo product jo usi box me jaate hain.
+        Kisi bhi size par dabakar poori list khol lo.
+      </p>
+      ${error?`<div class="msg error" style="margin-top:12px">${esc(friendlyDbError(error))}</div>`:''}
+    </div>
+    <div class="card sticky-search">
+      <div class="big-search">
+        <span class="mag">🔍</span>
+        <input id="bsq" class="search-safe" placeholder="Box size ya product ka naam…" value="${esc(boxSizeTerm)}" autocomplete="off">
+      </div>
+    </div>
+    <div id="boxsize-list"></div>`;
+  const input = document.getElementById('bsq');
+  input.addEventListener('input', ()=>{ boxSizeTerm = input.value; paintBoxSizeList(); });
+  paintBoxSizeList();
+}
+function boxSizeGroups(){
+  const map = {};
+  productsCache.forEach(p=>{
+    const d = (p.item_box_dimension || '').trim();
+    if(!d) return;
+    (map[d] = map[d] || []).push(p);
+  });
+  return Object.keys(map)
+    .map(d => ({dim: d, products: map[d].sort((a,b)=>a.name.localeCompare(b.name))}))
+    .sort((a,b) => b.products.length - a.products.length || a.dim.localeCompare(b.dim));
+}
+function paintBoxSizeList(){
+  const wrap = document.getElementById('boxsize-list');
+  if(!wrap) return;
+  const t = boxSizeTerm.trim().toLowerCase();
+  let groups = boxSizeGroups();
+  if(t){
+    groups = groups.map(g=>{
+      if(g.dim.toLowerCase().includes(t)) return g;           // size se match
+      const hits = g.products.filter(p=>p.name.toLowerCase().includes(t));
+      return hits.length ? {dim:g.dim, products:hits} : null;  // product se match
+    }).filter(Boolean);
+  }
+  const withBox = productsCache.filter(p=>(p.item_box_dimension||'').trim()).length;
+  if(!groups.length){
+    wrap.innerHTML = `<div class="card"><p class="empty">"${esc(boxSizeTerm)}" se kuch nahi mila.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = `<p class="result-count">${groups.length} box size · ${withBox} product par lagi hai
+      · ${productsCache.length - withBox} me abhi bhari nahi</p>` +
+    groups.map(g=>`<div class="card bs-card">
+      <div class="bs-head" onclick="toggleBoxSize(${JSON.stringify(g.dim).replace(/"/g,'&quot;')})">
+        <span class="bs-dim">${markHit(g.dim, boxSizeTerm.trim())}</span>
+        <span class="pill">${g.products.length} product</span>
+        <span class="bs-caret">${(t || openBoxSize===g.dim) ? '▴' : '▾'}</span>
+      </div>
+      <div class="bs-body" style="display:${(t || openBoxSize===g.dim) ? '' : 'none'}">
+        ${g.products.map(p=>`<div class="bs-item">
+          <span class="bs-name">${markHit(p.name, boxSizeTerm.trim())}</span>
+          <span class="bs-wt">${kg(p.unit_weight) || '—'}</span>
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleBoxSize(dim){
+  openBoxSize = openBoxSize === dim ? null : dim;
+  paintBoxSizeList();
 }
 
 /* ---------------- VYAPAR STOCK tab ----------------
@@ -1747,7 +1892,7 @@ async function saveBag(){
   });
 }
 async function deleteBag(id){
-  await withPin(async ()=>{
+  await withDeletePin(async ()=>{
     const {data} = await sb.from('pbs_bags').select('*').eq('id', id).single();
     if(!data) return;
     if(!confirm('Bag "' + data.code + '" delete karna hai?')) return;
@@ -1810,7 +1955,9 @@ async function restoreDeleted(id){
   });
 }
 async function forgetDeleted(id){
-  await withPin(async ()=>{
+  // Ye asli mitana hai — restore ka rasta bhi band ho jata hai, isliye
+  // yahan bhi wahi delete PIN.
+  await withDeletePin(async ()=>{
     if(!confirm('Ye history entry hamesha ke liye hata dein? Phir restore nahi ho payega.')) return;
     const {error} = await sb.from('pbs_deleted_items').delete().eq('id', id);
     if(error){ toast(friendlyDbError(error), 'error'); return; }
