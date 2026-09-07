@@ -346,6 +346,17 @@ a{color:var(--maroon);}
 .spec .v{font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700; color:var(--ink); margin-top:2px; word-break:break-all;}
 .spec .v.dim{color:#1D4ED8;}
 .spec .v.calc{color:var(--maroon);}
+.spec-input{border:1px solid var(--maroon); background:var(--white-card);}
+.spec-input .k{color:var(--maroon);}
+.fba-input{
+  font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700;
+  width:100%; padding:0; min-height:22px; margin-top:2px;
+  border:none; background:transparent; color:var(--maroon);
+}
+.fba-input:focus{outline:none; box-shadow:none;}
+.fba-input::placeholder{color:var(--ink-soft); font-weight:500;}
+.fba-input::-webkit-outer-spin-button,
+.fba-input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
 .spec .v.blank{color:var(--ink-soft); font-weight:500;}
 :root[data-theme="dark"] .spec .v.dim{color:#7DA6FF;}
 
@@ -460,9 +471,28 @@ function boxWeight(p, b){
   const u = num(b.unit_in_box), w = num(p.unit_weight);
   return (u===null || w===null) ? null : u*w;
 }
-function fbaWeight(p){
-  const f = num(p.fba_unit), w = num(p.unit_weight);
-  return (f===null || w===null) ? null : f*w;
+/* FBA Unit is a scratch calculator, not a stored fact — the sheet leaves
+   column F empty and it gets typed fresh whenever a part-box goes to FBA
+   (a 30-piece box with only 15 pieces going out). So the number typed on a
+   card lives in memory for the session only, and a blank reads as 0 rather
+   than a dash: that is the answer to "kitna weight jaayega" before anything
+   is counted. */
+let fbaScratch = {};
+function fbaUnitFor(p){
+  if(fbaScratch[p.id] !== undefined) return fbaScratch[p.id];
+  return p.fba_unit == null ? '' : p.fba_unit;
+}
+function fbaWeight(p, unitsOverride){
+  const raw = unitsOverride !== undefined ? unitsOverride : fbaUnitFor(p);
+  const f = num(raw), w = num(p.unit_weight);
+  if(w === null) return null;
+  return (f === null ? 0 : f) * w;
+}
+function onFbaInput(id, val){
+  fbaScratch[id] = val;
+  const p = productsCache.find(x => x.id === id);
+  const out = document.getElementById('fbawt_' + id);
+  if(p && out) out.textContent = kg(fbaWeight(p, val)) || '—';
 }
 function friendlyDbError(error){
   if(!error) return '';
@@ -570,7 +600,8 @@ async function lockNow(){
 document.addEventListener('focusin', (e)=>{
   const t = e.target;
   if(t.tagName === 'INPUT' && t.type !== 'file' && t.id !== 'pin-modal-input'
-     && !t.classList.contains('search-safe') && !unlocked()){
+     && !t.classList.contains('search-safe') && !t.classList.contains('calc-safe')
+     && !unlocked()){
     t.blur();
     showPinModal(async ()=>{ render(); });
   }
@@ -657,8 +688,16 @@ function productCardHtml(p, opts){
     </h3>
     <div class="spec-grid">
       ${specHtml('Unit Weight', kg(p.unit_weight))}
-      ${specHtml('FBA Unit', p.fba_unit)}
-      ${specHtml('FBA Weight', kg(fbaWeight(p)), 'calc')}
+      <div class="spec spec-input">
+        <div class="k">FBA Unit</div>
+        <input class="fba-input calc-safe" type="number" step="1" min="0" inputmode="numeric"
+               placeholder="0" value="${esc(fbaUnitFor(p))}"
+               oninput="onFbaInput(${p.id}, this.value)">
+      </div>
+      <div class="spec">
+        <div class="k">FBA Weight</div>
+        <div class="v calc" id="fbawt_${p.id}">${kg(fbaWeight(p)) || '—'}</div>
+      </div>
       ${specHtml('Item Dimension', p.item_dimension, 'dim')}
       ${specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
       ${p.notes ? specHtml('Note', p.notes) : ''}
