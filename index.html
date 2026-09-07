@@ -2002,8 +2002,11 @@ function paintVyaparList(){
     return `<div class="card">
       <div class="link-row" style="background:none; padding:0; margin:0">
         <span class="lr-name">${esc(p.name)}</span>
-        ${rows.length ? `<span class="pill sold">${fmtQty(total)} સ્ટોક</span>` : '<span class="pill unsold">જોડાયેલી નથી</span>'}
-        <button class="primary" onclick="openPicker(${p.id})">+ Vyapar નામ જોડો</button>
+        ${linksFor(p.id).length
+          ? `<span class="pill sold">✓ જોડાયેલી${rows.length ? ' · ' + fmtQty(total) + ' સ્ટોક' : ' · લાઇવ નથી'}</span>
+             <button onclick="openPicker(${p.id})" title="બીજું Vyapar નામ ઉમેરો" style="min-height:32px; padding:4px 10px; font-size:12px">+ બીજું નામ</button>`
+          : `<span class="pill unsold">જોડાયેલી નથી</span>
+             <button class="primary" onclick="openPicker(${p.id})">+ Vyapar નામ જોડો</button>`}
       </div>
       ${rows.length ? `<div class="stock-parts">
         ${linksFor(p.id).map(l=>{
