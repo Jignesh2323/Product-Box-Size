@@ -2086,19 +2086,21 @@ function paintVyaparList(){
     return `<div class="card">
       <div class="link-row" style="background:none; padding:0; margin:0">
         <span class="lr-name" style="cursor:pointer" onclick="toggleVyaparRow(${p.id})">${esc(p.name)}${
-          rows.length ? ` <span class="bs-caret">${openVyaparRow === p.id ? '▴' : '▾'}</span>` : ''}</span>
+          linksFor(p.id).length ? ` <span class="bs-caret">${openVyaparRow === p.id ? '▴' : '▾'}</span>` : ''}</span>
         ${vyaparFilter === 'disc'
           ? (isDiscontinued(p.id)
               ? `<span class="pill unsold">⛔ Discontinued</span><button onclick="toggleProductDisc(${p.id}, false)">↩️ હટાવો</button>`
               : `<button class="danger" onclick="toggleProductDisc(${p.id}, true)">⛔ Discontinue</button>`)
           : linksFor(p.id).length
           ? `<span class="pill ${isDiscontinued(p.id) ? 'unsold' : 'sold'}">✓ જોડાયેલી${
-                isDiscontinued(p.id) ? ' · ⛔ Discontinued' : (rows.length ? ' · ' + fmtQty(total) + ' સ્ટોક' : ' · Vyapar માં item બંધ')}</span>
+                isDiscontinued(p.id)
+                  ? ' · ⛔ Discontinued · ' + fmtQty(vyaparRowsFor(p.id, true).reduce((s,v)=>s+(num(v.current_stock)||0),0)) + ' સ્ટોક'
+                  : (rows.length ? ' · ' + fmtQty(total) + ' સ્ટોક' : ' · Vyapar માં item બંધ · ' + fmtQty(vyaparRowsFor(p.id, true).reduce((s,v)=>s+(num(v.current_stock)||0),0)) + ' સ્ટોક')}</span>
              <button onclick="openPicker(${p.id})" title="બીજું Vyapar નામ ઉમેરો" style="min-height:32px; padding:4px 10px; font-size:12px">+ બીજું નામ</button>`
           : `<span class="pill unsold">જોડાયેલી નથી</span>
              <button class="primary" onclick="openPicker(${p.id})">+ Vyapar નામ જોડો</button>`}
       </div>
-      ${rows.length ? `<div class="stock-parts" id="vlinks_${p.id}" style="display:${openVyaparRow === p.id ? '' : 'none'}">
+      ${linksFor(p.id).length ? `<div class="stock-parts" id="vlinks_${p.id}" style="display:${openVyaparRow === p.id ? '' : 'none'}">
         ${linksFor(p.id).map(l=>{
           const v = l.is_prefix ? null : vyaparIndex[String(l.pattern).toLowerCase()];
           // Prefix rule: "CDSA" se shuru hone waale saare live item apne aap —
