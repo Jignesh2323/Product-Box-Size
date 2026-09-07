@@ -1232,6 +1232,9 @@ function productCardHtml(p, opts){
       ${opts.stock ? `<div class="stock-wrap">${stockLineHtml(p)}</div>` : ''}
     </div>
     ${opts.editable ? `<div class="prod-actions">
+        ${isDiscontinued(p.id)
+          ? `<button onclick="toggleProductDisc(${p.id}, false)" title="Discontinue હટાવો">↩️</button>`
+          : `<button onclick="toggleProductDisc(${p.id}, true)" title="Discontinue" style="color:var(--ink-soft)">⛔</button>`}
         <button onclick="editProduct(${p.id})">✏️ Edit</button>
         <button class="danger" onclick="deleteProduct(${p.id})">🗑️</button>
       </div>` : ''}
