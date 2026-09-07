@@ -861,6 +861,13 @@ function isDiscontinued(productId){
   const rows = vyaparRowsFor(productId, true);
   return rows.length > 0 && rows.every(v => v.is_discontinued);
 }
+/* Edit form ka Discontinued tick/untick sirf PIN se — pehle wapas palto,
+   PIN sahi aaye tabhi lage. Cancel kiya to jaisa tha waisa. */
+function onDiscCheckChange(box){
+  const want = box.checked;
+  box.checked = !want;
+  withDeletePin(async ()=>{ box.checked = want; });
+}
 /* Product-level discontinue — naam se, Discontinued filter ya Edit form se. */
 async function toggleProductDisc(productId, on){
   const {error} = await sb.from('pbs_products').update({discontinued: !!on}).eq('id', productId);
@@ -1730,7 +1737,7 @@ function productFormHtml(editing){
       <div class="field"><label>Note</label>
         <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="મરજિયાત" style="width:100%"></div>
       <div id="img-picker"></div>
-      ${editing ? `<label class="disc-check"><input type="checkbox" id="p_disc" class="calc-safe" ${isDiscontinued(editing.id) ? 'checked' : ''}>
+      ${editing ? `<label class="disc-check"><input type="checkbox" id="p_disc" class="calc-safe" onchange="onDiscCheckChange(this)" ${isDiscontinued(editing.id) ? 'checked' : ''}>
              ⛔ Discontinued <span class="config-note" style="margin:0">— આ પ્રોડક્ટ બંધ થઈ ગઈ છે</span></label>` : ''}
     </div>`;
 }
@@ -1836,8 +1843,19 @@ async function saveProduct(){
       }
     }
     toast(editingProductId ? 'પ્રોડક્ટ અપડેટ થઈ ગઈ.' : 'પ્રોડક્ટ ઉમેરાઈ ગઈ.');
+    // Save ke baad page upar mat bhaago — jahan the wahin raho, aur jo row
+    // abhi save hui wo saamne rahe (photo upload karte waqt 192 row me
+    // baar-baar upar se neeche aana padta tha).
+    const savedId = productId, y = window.scrollY;
     editingProductId = null; boxDraft = []; imageDraft = null;
     await render();
+    window.scrollTo(0, y);
+    const rowEl = [...document.querySelectorAll('#products-list .prod-card')]
+      .find(c => c.querySelector('[onclick="editProduct(' + savedId + ')"]'));
+    if(rowEl){
+      const r = rowEl.getBoundingClientRect();
+      if(r.top < 0 || r.bottom > window.innerHeight) rowEl.scrollIntoView({block:'center'});
+    }
   });
 }
 async function deleteProduct(id){
