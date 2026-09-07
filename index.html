@@ -459,8 +459,31 @@ a{color:var(--maroon);}
 .spec .v{font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700; color:var(--ink); margin-top:2px; word-break:break-all;}
 .spec .v.dim{color:#1D4ED8;}
 .spec .v.calc{color:var(--maroon);}
-.spec .v.blank{color:var(--ink-soft); font-weight:500;}
 :root[data-theme="dark"] .spec .v.dim{color:#7DA6FF;}
+
+/* Har spec ka apna rang, jaise box ki cream patti aur stock ki hari patti ka
+   hai. Teen ek jaise slate dabbe ek doosre me ghul jaate the; ab aankh seedhe
+   us khaane par jaati hai jo chahiye. */
+.spec-uw{background:#EFF6FF; border-color:#BFDBFE;}
+.spec-uw .k{color:#2563EB;}
+.spec-uw .v{color:#1D4ED8;}
+.spec-idim{background:#F5F3FF; border-color:#DDD6FE;}
+.spec-idim .k{color:#7C3AED;}
+.spec-idim .v{color:#6D28D9;}
+.spec-ibdim{background:#ECFEFF; border-color:#A5F3FC;}
+.spec-ibdim .k{color:#0891B2;}
+.spec-ibdim .v{color:#0E7490;}
+:root[data-theme="dark"] .spec-uw{background:#0E2438; border-color:#1E3A5F;}
+:root[data-theme="dark"] .spec-uw .k{color:#7DA6FF;}
+:root[data-theme="dark"] .spec-uw .v{color:#60A5FA;}
+:root[data-theme="dark"] .spec-idim{background:#211B3D; border-color:#3B2F63;}
+:root[data-theme="dark"] .spec-idim .k{color:#B9A6FF;}
+:root[data-theme="dark"] .spec-idim .v{color:#A78BFA;}
+:root[data-theme="dark"] .spec-ibdim{background:#0B2B31; border-color:#155E68;}
+:root[data-theme="dark"] .spec-ibdim .k{color:#5FE0EF;}
+:root[data-theme="dark"] .spec-ibdim .v{color:#22D3EE;}
+/* Khaali khaana kisi bhi rang me phika hi rehta hai — "—" ko chamakna nahi. */
+.spec .v.blank{color:var(--ink-soft); font-weight:500;}
 
 .box-line{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -1023,9 +1046,9 @@ function markHit(text, term){
   if(i < 0) return esc(s);
   return esc(s.slice(0,i)) + '<span class="hit">' + esc(s.slice(i, i+term.length)) + '</span>' + esc(s.slice(i+term.length));
 }
-function specHtml(label, value, cls){
+function specHtml(label, value, cls, tone){
   const blank = (value === null || value === undefined || value === '');
-  return '<div class="spec"><div class="k">' + esc(label) + '</div>' +
+  return '<div class="spec ' + (tone||'') + '"><div class="k">' + esc(label) + '</div>' +
     '<div class="v ' + (blank ? 'blank' : (cls||'')) + '">' + (blank ? '—' : esc(value)) + '</div></div>';
 }
 function productCardHtml(p, opts){
@@ -1039,10 +1062,10 @@ function productCardHtml(p, opts){
       ${boxes.length > 1 ? `<span class="pill" style="background:#FFF7ED; border-color:#F3D9BC; color:#B45309; font-size:11px;">${boxes.length} box sizes</span>` : ''}
     </h3>
     <div class="spec-grid">
-      ${specHtml('Unit Weight', kg(p.unit_weight))}
+      ${specHtml('Unit Weight', kg(p.unit_weight), '', 'spec-uw')}
       ${opts.itemDims === false ? '' :
-        specHtml('Item Dimension', p.item_dimension, 'dim') +
-        specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
+        specHtml('Item Dimension', p.item_dimension, '', 'spec-idim') +
+        specHtml('Item Box Dimension', p.item_box_dimension, '', 'spec-ibdim')}
     </div>
     <div class="box-col">
       <div class="box-stack">
