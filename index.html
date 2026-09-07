@@ -776,7 +776,7 @@ let vyaparLoaded = false;
 async function loadVyapar(force){
   if(vyaparLoaded && !force) return {};
   const [vi, li] = await Promise.all([
-    sb.from('pbs_vyapar_items').select('item_name, current_stock, is_active, is_discontinued, phase_out_date, synced_at').order('item_name'),
+    sb.from('pbs_vyapar_items').select('item_name, current_stock, is_active, is_discontinued, discontinued_manual, phase_out_date, synced_at').order('item_name'),
     sb.from('pbs_links').select('id, product_id, pattern, is_prefix')
   ]);
   if(vi.error) return {error: vi.error};
@@ -788,6 +788,10 @@ async function loadVyapar(force){
   // chalte hain. Band item tabhi saamne aata hai jab uska stock 0 se zyada
   // ho — wo maal shelf par pada hai, dikhna chahiye, bas ginti me nahi.
   vyaparCache = vi.data || [];
+  // Discontinued do jagah se aata hai: Vyapar ki list (roz sync hoti hai) ya
+  // app me haath se lagaya hua flag (sync use kabhi nahi chhuta). Dono ko ek
+  // hi jhande me mila do, aage sab code bas .is_discontinued dekhe.
+  vyaparCache.forEach(v => { v.is_discontinued = !!(v.is_discontinued || v.discontinued_manual); });
   vyaparLive  = vyaparCache.filter(v => v.is_active !== false);
   linksCache  = li.data || [];
   vyaparIndex = {};
@@ -832,15 +836,20 @@ function vyaparRowsAll(productId){
 function stockFor(productId){
   const rows = vyaparRowsFor(productId);
   if(!rows.length) return null;                       // joda hi nahi gaya — 0 mat dikhao
-  return rows.filter(v => v.is_active !== false)
-             .reduce((s,v) => s + (num(v.current_stock) || 0), 0);
+  // Family me discontinued variant (Beer Cover Mix) ginti se bahar — wo
+  // dikhta bhi nahi. Poora product hi discontinued ho (Door Chime) to uska
+  // bacha hua stock dikhana theek hai, badge ke saath.
+  const keep = isDiscontinued(productId) ? rows : rows.filter(v => !v.is_discontinued);
+  return keep.reduce((s,v) => s + (num(v.current_stock) || 0), 0);
 }
 function fmtQty(n){ return n === null || n === undefined ? '—' : Number(n).toLocaleString('en-IN'); }
 /* Discontinued: Vyapar ki alag list hai (phase-out date ke saath). Product
    tab discontinued maana jaata hai jab uske SAARE live item us list me hon —
    CDSA ka ek variant band ho to poora CDSA band nahi kehlata. */
 function isDiscontinued(productId){
-  const rows = vyaparRowsFor(productId);
+  // Live aur band-par-stock waale dono gine jaate hain: Vaccum Sealer band
+  // bhi hai aur discontinued bhi — wo DISCONTINUED hi kehlayega.
+  const rows = vyaparRowsFor(productId, true).filter(v => v.is_active !== false || (num(v.current_stock) || 0) > 0);
   return rows.length > 0 && rows.every(v => v.is_discontinued);
 }
 /* Kam stock: 10 se neeche (0 samet). Discontinued product isme nahi ginte —
@@ -1206,11 +1215,12 @@ function stockLineHtml(p){
     // dikhao, tag ke saath. (4 Pcs Pet Groom Kit: band, phir bhi 2 shelf par.)
     if(dead && ghosts.length){
       const g = ghosts.reduce((s,v)=>s+(num(v.current_stock)||0),0);
+      const gDisc = ghosts.every(v => v.is_discontinued);
       return `<div class="stock-line disc" onclick="toggleStockParts(${p.id})">
         <span class="lbl-icon">⛔</span>
         <span class="st-qty" style="text-decoration:none">${fmtQty(g)}</span>
         <span style="font-size:12px; color:var(--ink-soft)">stock</span>
-        <span class="st-tag">Vyapar માં હવે લાઇવ નથી</span>
+        <span class="st-tag">${gDisc ? 'DISCONTINUED' : 'Vyapar માં હવે લાઇવ નથી'}</span>
         <span class="st-sub">${ghosts.length} item ▾</span>
       </div>
       <div class="stock-parts" id="stockparts_${p.id}" style="display:none">
@@ -1237,8 +1247,14 @@ function stockLineHtml(p){
   const lowParts = rows.length > 1 ? rows.filter(v => !v.is_discontinued && isLowQty(num(v.current_stock) || 0)) : [];
   // Ek hi item ho par minus/band me ho, to bhi breakdown dikhao — warna
   // number akela dikhega aur pata nahi chalega kyun aisa hai.
-  const showParts = rows.length > 1 || neg || partDisc || ghosts.length > 0;
-  const sub = rows.length > 1 ? `${rows.length} item ▾` : (neg ? 'માઇનસ ▾' : 'Vyapar');
+  // Family ke andar discontinued variant dikhte nahi — bas ginti me "· N બંધ"
+  // taaki pata rahe ki kuch chhupa hai, chhoota nahi.
+  const shown = disc ? rows : rows.filter(v => !v.is_discontinued);
+  const hiddenDisc = rows.length - shown.length;
+  const showParts = shown.length > 1 || neg || ghosts.length > 0 || hiddenDisc > 0;
+  const sub = shown.length > 1
+    ? `${shown.length} item${hiddenDisc ? ' · ' + hiddenDisc + ' discontinued' : ''} ▾`
+    : (neg ? 'માઇનસ ▾' : (hiddenDisc ? hiddenDisc + ' discontinued ▾' : 'Vyapar'));
   const cls = disc ? 'disc' : (neg ? 'neg' : ((low || lowParts.length) ? 'low' : (total > 0 ? '' : 'zero')));
   return `<div class="stock-line ${cls}" onclick="toggleStockParts(${p.id})">
       <span class="lbl-icon">${disc ? '⛔' : ((low || lowParts.length) ? '⚠️' : '📊')}</span>
@@ -1250,9 +1266,9 @@ function stockLineHtml(p){
       <span class="st-sub">${sub}</span>
     </div>
     ${showParts ? `<div class="stock-parts" id="stockparts_${p.id}" style="display:none">
-      ${rows.map(v=>{
+      ${shown.map(v=>{
         const q = num(v.current_stock) || 0;
-        const lowV = rows.length > 1 && !v.is_discontinued && isLowQty(q) && q >= 0;
+        const lowV = shown.length > 1 && !v.is_discontinued && isLowQty(q) && q >= 0;
         return `<div class="stock-part${v.is_discontinued ? ' off' : ''}${lowV ? ' lowpart' : ''}">
           <span class="sp-name">${esc(v.item_name)}${v.is_discontinued ? '<span class="sp-tag">Discontinued' + (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '') + '</span>' : (lowV ? '<span class="sp-tag">ઓછો સ્ટોક</span>' : '')}</span>
           <span class="sp-qty${q < 0 ? ' minus' : (lowV ? ' lowq' : '')}">${fmtQty(v.current_stock)}</span>
@@ -1958,19 +1974,33 @@ function paintVyaparList(){
           // naya variant Vyapar me bane to bhi jud jaata hai.
           if(l.is_prefix){
             const hit = vyaparLive.filter(x => x.item_name.toLowerCase().startsWith(String(l.pattern).toLowerCase()));
+            // Rule ki ek line, phir uske andar ke har item par ⛔ / ↩️ —
+            // taaki Beer Cover Mix jaisa ek variant haath se discontinue ho sake.
             return `<div class="stock-part">
               <span class="sp-name">${esc(l.pattern)}…<span class="sp-tag" style="color:var(--info)">prefix rule · ${hit.length} item આપોઆપ</span></span>
-              <span class="sp-qty">${fmtQty(hit.reduce((s,x)=>s+(num(x.current_stock)||0),0))}</span>
+              <span class="sp-qty">${fmtQty(hit.filter(x=>!x.is_discontinued).reduce((s,x)=>s+(num(x.current_stock)||0),0))}</span>
               <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
-            </div>`;
+            </div>
+            ${hit.map(x=>`<div class="stock-part${x.is_discontinued ? ' off' : ''}" style="padding-left:14px">
+              <span class="sp-name">${esc(x.item_name)}${x.is_discontinued
+                ? '<span class="sp-tag">Discontinued' + (x.discontinued_manual ? ' · એપમાં લગાવેલું' : (x.phase_out_date ? ' · ' + esc(x.phase_out_date) : '')) + '</span>' : ''}</span>
+              <span class="sp-qty${(num(x.current_stock)||0) < 0 ? ' minus' : ''}">${fmtQty(x.current_stock)}</span>
+              <button class="sp-x" title="${x.discontinued_manual ? 'Discontinue હટાવો' : 'Discontinue લગાવો'}"
+                onclick="toggleManualDisc(${JSON.stringify(x.item_name).replace(/"/g,'&quot;')}, ${x.discontinued_manual ? 'false' : 'true'})"
+                ${x.is_discontinued && !x.discontinued_manual ? 'disabled style="opacity:.35"' : ''}>${x.discontinued_manual ? '↩️' : '⛔'}</button>
+            </div>`).join('')}`;
           }
           // v nahi mila = ya to Vyapar me band ho gaya, ya naam hi hata diya.
           // Dono me ye link ab kisi kaam ka nahi — dikhao taaki ✕ se hata sakein.
           const notLive = !v || v.is_active === false;
+          const discTag = v && v.is_discontinued
+            ? '<span class="sp-tag">Discontinued' + (v.discontinued_manual ? ' · એપમાં લગાવેલું' : (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '')) + '</span>' : '';
           return `<div class="stock-part${(notLive || (v && v.is_discontinued)) ? ' off' : ''}">
             <span class="sp-name">${esc(l.pattern)}${
-              notLive ? '<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span>'
-                      : (v.is_discontinued ? '<span class="sp-tag">Discontinued' + (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '') + '</span>' : '')}</span>
+              notLive ? '<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span>' : discTag}</span>
+            ${v && !notLive ? `<button class="sp-x" title="${v.discontinued_manual ? 'Discontinue હટાવો' : 'Discontinue લગાવો'}"
+               onclick="toggleManualDisc(${JSON.stringify(v.item_name).replace(/"/g,'&quot;')}, ${v.discontinued_manual ? 'false' : 'true'})"
+               ${v.is_discontinued && !v.discontinued_manual ? 'disabled style="opacity:.35"' : ''}>${v.discontinued_manual ? '↩️' : '⛔'}</button>` : ''}
             <span class="sp-qty${v && (num(v.current_stock)||0) < 0 ? ' minus' : ''}">${v ? fmtQty(v.current_stock) : ''}</span>
             <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
           </div>`;
@@ -2025,6 +2055,16 @@ async function addLink(productId, pattern){
   linksCache.push(data);
   pickerTerm = '';
   toast(pattern + ' જોડાઈ ગયું.');
+  paintVyaparList();
+}
+/* Haath se discontinue: Vyapar ki list me nahi hai par aap jaante ho ki ye
+   band ho gaya (Torch, Satellite Finder, CDSA STRIP…). Roz ka sync is flag
+   ko nahi chhuta, isliye subah wapas nahi aata. */
+async function toggleManualDisc(itemName, on){
+  const {error} = await sb.from('pbs_vyapar_items').update({discontinued_manual: on}).eq('item_name', itemName);
+  if(error){ toast(friendlyDbError(error), 'error'); return; }
+  await loadVyapar(true);
+  toast(on ? itemName + ' → discontinued' : itemName + ' → discontinue હટાવ્યું');
   paintVyaparList();
 }
 async function removeLink(linkId){
