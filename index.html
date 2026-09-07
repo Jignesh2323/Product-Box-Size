@@ -425,8 +425,8 @@ a{color:var(--maroon);}
    sheet's own formulas (=D*E and =E*F) recomputed on screen,
    so they can never drift out of sync with the numbers.
    ============================================================ */
-const SUPABASE_URL = "https://deyetzwxatogmdmjacvo.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRleWV0end4YXRvZ21kbWphY3ZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDUzNjcsImV4cCI6MjA5ODk4MTM2N30.wbdWs_Y0YvFOsQWjjodqPRuWS1H1Dx57jjb8GQtrkA0";
+const SUPABASE_URL = "https://genlxypyehcpxatcsiut.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_pxE-irYl9twtYkk2UDi38g_NWkaW4jP";
 const IMAGE_BUCKET = "pbs-images";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -443,7 +443,14 @@ function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* ---------------- number / text helpers ---------------- */
-function num(v){ const n = Number(v); return Number.isFinite(n) ? n : null; }
+// Number(null) and Number('') are both 0, which would turn a blank FBA Unit
+// or a blank Unit in Box into a confident "0 kg". A blank cell has to stay
+// blank, exactly as it does in the sheet.
+function num(v){
+  if(v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 function fmtWt(n){
   if(n === null || n === undefined || n === '' || !Number.isFinite(Number(n))) return null;
   return (Math.round(Number(n)*1000)/1000).toString();
