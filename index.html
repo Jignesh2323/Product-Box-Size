@@ -939,6 +939,19 @@ function applyTheme(){
 function setTheme(theme){ localStorage.setItem(THEME_KEY, theme); applyTheme(); render(); }
 applyTheme();
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(getTheme()==='auto') applyTheme(); });
+// Window 900px ke aar-paar jaaye to nav badalni hai (PC: saare tab; phone: 4 + More).
+// matchMedia 'change' har jagah bharosemand nahi (emulation, kuch WebViews),
+// isliye resize par bhi dekhte hain — par re-render sirf tab jab side badle.
+let lastWide = window.matchMedia('(min-width:900px)').matches;
+function onWidthMaybeChanged(){
+  const wide = window.matchMedia('(min-width:900px)').matches;
+  if(wide === lastWide) return;
+  lastWide = wide;
+  if(typeof render === 'function') render();
+}
+window.matchMedia('(min-width:900px)').addEventListener('change', onWidthMaybeChanged);
+let resizeTimer = null;
+window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer = setTimeout(onWidthMaybeChanged, 150); });
 function getDefaultTab(){ return localStorage.getItem(DEFAULT_TAB_KEY) || 'search'; }
 function setDefaultTab(k){ localStorage.setItem(DEFAULT_TAB_KEY, k); }
 
@@ -1336,18 +1349,22 @@ async function render(){
   // Bell ke liye stock har tab par chahiye — pehli baar fetch, phir cache.
   if(!productsCache.length) await loadProducts();
   await loadVyapar();
-  const primary = TABS.filter(([k])=> !HIDDEN_TAB_KEYS.includes(k));
-  const secondary = TABS.filter(([k])=> HIDDEN_TAB_KEYS.includes(k));
-  const onSecondary = HIDDEN_TAB_KEYS.includes(state.tab);
+  // PC par jagah hai — saare tab ek saath, koi "More" nahi. Phone par wahi
+  // 4 + More, warna 7 tab 375px me pis jaate.
+  const wide = window.matchMedia('(min-width:900px)').matches;
+  const primary = wide ? TABS : TABS.filter(([k])=> !HIDDEN_TAB_KEYS.includes(k));
+  const secondary = wide ? [] : TABS.filter(([k])=> HIDDEN_TAB_KEYS.includes(k));
+  const onSecondary = !wide && HIDDEN_TAB_KEYS.includes(state.tab);
   root.innerHTML = `<div class="app">
     ${topbar()}
     <div id="tab-content"><div class="empty">Loading…</div></div>
   </div>
   <nav class="bottom-nav">
-    ${primary.map(([k,label])=>`<div class="nav-item ${state.tab===k?'active':''}" onclick="setTab('${k}')">
+    ${primary.map(([k,label])=>`<div class="nav-item ${state.tab===k?'active':''}"
+        onclick="${HIDDEN_TAB_KEYS.includes(k) ? `onMoreTabSelect('${k}')` : `setTab('${k}')`}">
       <span class="nav-icon">${TAB_ICONS[k]}</span><span class="nav-label">${label}</span>
     </div>`).join('')}
-    <div class="nav-item nav-more ${onSecondary?'active':''}" onclick="toggleMoreMenu(event)">
+    ${secondary.length ? `<div class="nav-item nav-more ${onSecondary?'active':''}" onclick="toggleMoreMenu(event)">
       <span class="nav-icon">⋯</span><span class="nav-label">More</span>
       <div class="more-menu" id="more-menu">
         ${secondary.map(([k,label])=>`<div class="more-menu-item ${state.tab===k?'active':''}"
@@ -1355,7 +1372,7 @@ async function render(){
           <span class="nav-icon">${TAB_ICONS[k]}</span>${label}
         </div>`).join('')}
       </div>
-    </div>
+    </div>` : ''}
   </nav>`;
   await renderTabContent();
 }
@@ -2071,6 +2088,10 @@ async function addLink(productId, pattern){
   if(error){ toast(friendlyDbError(error), 'error'); return; }
   linksCache.push(data);
   pickerTerm = '';
+  // Judte hi picker band — warna ye product "બાકી" list me tab tak dikhta
+  // rehta tha jab tak picker khula rahe, aur lagta tha ki juda hi nahi.
+  // Doosra naam jodna ho to "Jude hue" me jaake phir se + dabao.
+  pickerFor = null;
   toast(pattern + ' જોડાઈ ગયું.');
   paintVyaparList();
 }
