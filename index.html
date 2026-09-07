@@ -888,23 +888,24 @@ function isLowQty(n){ return n !== null && n !== undefined && n < LOW_STOCK_AT; 
    (CDSA jaise) me har variant alag — total 36,000 ho to bhi CDSA STRIP ke 3
    ko chhupne nahi dena. */
 function lowStockProducts(){
+  // Discontinued bhi bell me aate hain — bas ⛔ ke saath, taaki pata rahe ki
+  // ye kam isliye hai ki band kiya gaya hai, khatam nahi hua.
   const out = [];
   productsCache.forEach(p=>{
-    if(isDiscontinued(p.id)) return;
     const rows = vyaparRowsFor(p.id);
     if(!rows.length) return;
+    const pDisc = isDiscontinued(p.id);
     if(rows.length === 1){
       const t = num(rows[0].current_stock) || 0;
-      if(isLowQty(t)) out.push({p, label: p.name, total: t});
+      if(isLowQty(t)) out.push({p, label: p.name, total: t, disc: pDisc});
     } else {
       rows.forEach(v=>{
-        if(v.is_discontinued) return;
         const t = num(v.current_stock) || 0;
-        if(isLowQty(t)) out.push({p, label: p.name + ' → ' + v.item_name, total: t});
+        if(isLowQty(t)) out.push({p, label: p.name + ' → ' + v.item_name, total: t, disc: pDisc || !!v.is_discontinued});
       });
     }
   });
-  return out.sort((a,b) => a.total - b.total);
+  return out.sort((a,b) => (a.disc - b.disc) || (a.total - b.total));
 }
 function showLowStockList(){
   const old = document.getElementById('low-modal'); if(old) old.remove();
@@ -913,8 +914,8 @@ function showLowStockList(){
     <div class="modal-box" style="max-height:80vh; overflow:auto">
       <h3>🔔 ${LOW_STOCK_AT} થી ઓછો સ્ટોક</h3>
       <p class="config-note" style="margin-top:-4px">${list.length ? list.length + ' પ્રોડક્ટ ખતમ થવા પર છે.' : 'બધું ઠીક છે — કોઈ પ્રોડક્ટ ' + LOW_STOCK_AT + ' થી નીચે નથી.'}</p>
-      ${list.map(x=>`<div class="stock-part">
-        <span class="sp-name">${esc(x.label)}</span>
+      ${list.map(x=>`<div class="stock-part${x.disc ? ' off' : ''}">
+        <span class="sp-name">${esc(x.label)}${x.disc ? '<span class="sp-tag">⛔ Discontinued</span>' : ''}</span>
         <span class="sp-qty${x.total < 0 ? ' minus' : ''}">${fmtQty(x.total)}</span>
       </div>`).join('')}
       <div class="modal-actions"><button onclick="document.getElementById('low-modal').remove()">બંધ કરો</button></div>
