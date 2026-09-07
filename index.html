@@ -963,12 +963,13 @@ const TABS = [
   ['search','Search'],
   ['products','Products'],
   ['bags','Bags'],
+  ['vyapar','Vyapar Stock'],
   ['deleted','Deleted Items'],
   ['settings','Settings'],
 ];
-const HIDDEN_TAB_KEYS = ['deleted','settings'];
-const NO_PIN_MORE_TABS = ['settings'];
-const TAB_ICONS = { search:'🔍', products:'📦', bags:'🛍️', deleted:'♻️', settings:'⚙️' };
+const HIDDEN_TAB_KEYS = ['vyapar','deleted','settings'];
+const NO_PIN_MORE_TABS = ['vyapar','settings'];
+const TAB_ICONS = { search:'🔍', products:'📦', bags:'🛍️', vyapar:'🔗', deleted:'♻️', settings:'⚙️' };
 
 const BOX_LOGO = `<svg width="24" height="24" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <g stroke="#A67954" stroke-width="2.6" stroke-linejoin="round">
@@ -1059,6 +1060,7 @@ async function renderTabContent(){
     if(state.tab==='search')   return await renderSearchTab(box);
     if(state.tab==='products') return await renderProductsTab(box);
     if(state.tab==='bags')     return await renderBagsTab(box);
+    if(state.tab==='vyapar')   return await renderVyaparTab(box);
     if(state.tab==='deleted')  return await renderDeletedTab(box);
     if(state.tab==='settings') return await renderSettingsTab(box);
   }catch(err){
@@ -1276,6 +1278,7 @@ function paintMixTotal(){
 async function renderProductsTab(box){
   const on = unlocked();
   const {error} = await loadProducts();
+  await loadVyapar();   // stock line ke liye — pehli baar hi fetch hota hai
   const editing = editingProductId ? productsCache.find(p=>p.id===editingProductId) : null;
   box.innerHTML = `
     ${!on ? '<p class="config-note">🔒 Add / Edit / Delete ke liye upar "Unlock" dabao.</p>' : `
@@ -1333,7 +1336,7 @@ function paintProductsList(){
   const list = t ? productsCache.filter(p=>matchProduct(p,t)) : productsCache;
   wrap.innerHTML = `<p class="result-count">${list.length} of ${productsCache.length} products</p>` +
     (list.length
-      ? list.map(p=>productCardHtml(p, {editable: unlocked(), term: t})).join('')
+      ? list.map(p=>productCardHtml(p, {editable: unlocked(), term: t, stock: true})).join('')
       : '<div class="card"><p class="empty">Koi product nahi mila.</p></div>');
 }
 function renderBoxEditor(){
@@ -1431,6 +1434,159 @@ async function deleteProduct(id){
     toast('Delete ho gaya — Deleted Items se restore kar sakte ho.');
     await render();
   });
+}
+
+/* ---------------- VYAPAR STOCK tab ----------------
+   Yahan app ka naam aur Vyapar ka naam aamne saamne rakhe jaate hain. Vyapar
+   me naam thoda alag likha hota hai (AK-35 vs AK35, Wire Stripper vs Wire
+   Stripping) aur kai jagah ek product ke kai item hote hain (CDSA), isliye
+   jodna haath se hi theek rehta hai — app sirf aasan bana deta hai. */
+let vyaparFilter = 'unlinked';
+let vyaparSearch = '';
+let pickerFor = null;      // kis product ka picker khula hai
+let pickerTerm = '';
+
+async function renderVyaparTab(box){
+  const [{error: pErr}, {error: vErr}] = await Promise.all([loadProducts(), loadVyapar(true)]);
+  const err = pErr || vErr;
+  if(err){
+    box.innerHTML = `<div class="msg error"><b>Vyapar data nahi khula:</b> ${esc(friendlyDbError(err))}</div>`;
+    return;
+  }
+  const linked = productsCache.filter(p => linksFor(p.id).length).length;
+  const synced = lastSyncedAt();
+  box.innerHTML = `
+    <div class="card">
+      <h3>🔗 Vyapar Stock</h3>
+      <p class="config-note" style="margin-top:-4px">
+        App ka product aur Vyapar ka item naam yahan jodo. Ek product ke saath kai Vyapar item
+        jud sakte hain — jaise CDSA ke saath CDSA-HONDA, CDSA-TATA… — aur unka stock jud kar
+        ek hi number banta hai. Search me isse kuch nahi badalta.
+      </p>
+      <div class="grid-stats grid-stats-2col" style="margin-top:12px">
+        <div class="stat stat-good"><div class="num">${linked}</div><div class="lbl">jud gaye</div></div>
+        <div class="stat ${productsCache.length-linked ? 'stat-bad' : 'stat-neutral'}">
+          <div class="num">${productsCache.length - linked}</div><div class="lbl">baaki hain</div></div>
+        <div class="stat stat-info"><div class="num">${vyaparCache.length}</div><div class="lbl">Vyapar item</div></div>
+      </div>
+      <p class="config-note" style="margin:12px 0 0">
+        ${synced ? '📅 Vyapar se aakhri baar liya gaya: <b>' + esc(synced.toLocaleString('en-IN')) + '</b>. Ye abhi apne aap update nahi hota — AVEDIA PC se sync jodna baaki hai.'
+                 : 'Abhi tak Vyapar se stock nahi aaya.'}
+      </p>
+    </div>
+    <div class="card">
+      <div class="segmented">
+        <button class="${vyaparFilter==='unlinked'?'on':''}" onclick="setVyaparFilter('unlinked')">Baaki</button>
+        <button class="${vyaparFilter==='linked'?'on':''}"   onclick="setVyaparFilter('linked')">Jude hue</button>
+        <button class="${vyaparFilter==='all'?'on':''}"      onclick="setVyaparFilter('all')">Sab</button>
+      </div>
+      <div class="big-search">
+        <span class="mag">🔍</span>
+        <input id="vq" class="search-safe" placeholder="Product dhundo…" value="${esc(vyaparSearch)}" autocomplete="off">
+      </div>
+    </div>
+    <div id="vyapar-list"></div>`;
+  const input = document.getElementById('vq');
+  input.addEventListener('input', ()=>{ vyaparSearch = input.value; paintVyaparList(); });
+  paintVyaparList();
+}
+function setVyaparFilter(f){ vyaparFilter = f; pickerFor = null; renderTabContent(); }
+function paintVyaparList(){
+  const wrap = document.getElementById('vyapar-list');
+  if(!wrap) return;
+  const t = vyaparSearch.trim().toLowerCase();
+  let list = productsCache.filter(p=>{
+    // Jis product ka picker khula hai wo list me bana rehta hai, warna pehla
+    // naam jodte hi row "Baaki" filter se gayab ho jaati thi aur doosra naam
+    // (CDSA jaison ke liye zaroori) jodne ka mauka hi nahi milta tha.
+    if(p.id === pickerFor) return true;
+    const has = linksFor(p.id).length > 0;
+    if(vyaparFilter === 'linked'   && !has) return false;
+    if(vyaparFilter === 'unlinked' &&  has) return false;
+    return !t || p.name.toLowerCase().includes(t);
+  });
+  if(!list.length){
+    wrap.innerHTML = `<div class="card"><p class="empty">${
+      vyaparFilter==='unlinked' ? 'Shabaash — koi product baaki nahi raha.' : 'Yahan kuch nahi mila.'}</p></div>`;
+    return;
+  }
+  wrap.innerHTML = `<p class="result-count">${list.length} product</p>` + list.map(p=>{
+    const rows = vyaparRowsFor(p.id);
+    const total = stockFor(p.id);
+    return `<div class="card">
+      <div class="link-row" style="background:none; padding:0; margin:0">
+        <span class="lr-name">${esc(p.name)}</span>
+        ${rows.length ? `<span class="pill sold">${fmtQty(total)} stock</span>` : '<span class="pill unsold">joda nahi</span>'}
+        <button class="primary" onclick="openPicker(${p.id})">+ Vyapar naam jodo</button>
+      </div>
+      ${rows.length ? `<div class="stock-parts">
+        ${linksFor(p.id).map(l=>{
+          const v = l.is_prefix ? null : vyaparIndex[String(l.pattern).toLowerCase()];
+          return `<div class="stock-part">
+            <span class="sp-name">${l.is_prefix ? esc(l.pattern) + '…' : esc(l.pattern)}${
+              v ? '' : '<span class="mx-sub">Vyapar me ye naam ab nahi hai</span>'}</span>
+            <span class="sp-qty">${v ? fmtQty(v.current_stock) : ''}</span>
+            <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+      ${pickerFor === p.id ? pickerHtml(p) : ''}
+    </div>`;
+  }).join('');
+  if(pickerFor){
+    const pin = document.getElementById('pick-input');
+    if(pin){
+      pin.addEventListener('input', ()=>{ pickerTerm = pin.value; paintPickerHits(); });
+      pin.focus();
+    }
+    paintPickerHits();
+  }
+}
+function pickerHtml(p){
+  return `<div class="link-pick">
+    <div class="big-search">
+      <span class="mag">🔍</span>
+      <input id="pick-input" class="search-safe" placeholder="Vyapar ka naam dhundo…" value="${esc(pickerTerm)}" autocomplete="off">
+    </div>
+    <div id="pick-hits"></div>
+  </div>`;
+}
+function openPicker(id){
+  pickerFor = pickerFor === id ? null : id;
+  pickerTerm = '';
+  paintVyaparList();
+}
+function paintPickerHits(){
+  const wrap = document.getElementById('pick-hits');
+  if(!wrap || !pickerFor) return;
+  const t = pickerTerm.trim().toLowerCase();
+  if(!t){ wrap.innerHTML = '<p class="config-note" style="margin:8px 0 0">Vyapar ka naam type karo.</p>'; return; }
+  const taken = {};
+  linksCache.forEach(l => { if(l.product_id === pickerFor) taken[String(l.pattern).toLowerCase()] = 1; });
+  const hits = vyaparCache.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
+  wrap.innerHTML = hits.length
+    ? hits.map(v=>`<div class="link-hit" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
+        <span>${markHit(v.item_name, pickerTerm.trim())}</span>
+        <span class="lh-qty">${fmtQty(v.current_stock)}</span>
+      </div>`).join('')
+    : `<p class="empty" style="text-align:center">"${esc(pickerTerm)}" Vyapar me nahi mila.</p>`;
+}
+async function addLink(productId, pattern){
+  const {data, error} = await sb.from('pbs_links')
+    .insert({product_id: productId, pattern: pattern, is_prefix: false})
+    .select('id, product_id, pattern, is_prefix').single();
+  if(error){ toast(friendlyDbError(error), 'error'); return; }
+  linksCache.push(data);
+  pickerTerm = '';
+  toast(pattern + ' jud gaya.');
+  paintVyaparList();
+}
+async function removeLink(linkId){
+  const {error} = await sb.from('pbs_links').delete().eq('id', linkId);
+  if(error){ toast(friendlyDbError(error), 'error'); return; }
+  linksCache = linksCache.filter(l => l.id !== linkId);
+  toast('Hata diya.');
+  paintVyaparList();
 }
 
 /* ---------------- BAGS tab (Flipkart QR + Barcode bag sizes) ---------------- */
@@ -1661,6 +1817,24 @@ const SETUP_SQL = [
 "  sort_order integer not null default 0",
 ");",
 "",
+"-- Vyapar ka stock (AVEDIA PC se sync hota hai) aur uska product se rishta",
+"create table if not exists public.pbs_vyapar_items (",
+"  item_name text primary key,",
+"  current_stock integer,",
+"  is_active boolean not null default true,",
+"  synced_at timestamptz not null default now()",
+");",
+"",
+"create table if not exists public.pbs_links (",
+"  id bigint generated always as identity primary key,",
+"  product_id bigint not null references public.pbs_products(id) on delete cascade,",
+"  pattern text not null,",
+"  is_prefix boolean not null default false,",
+"  created_at timestamptz not null default now()",
+");",
+"create unique index if not exists pbs_links_uniq on public.pbs_links (product_id, lower(pattern), is_prefix);",
+"create index if not exists pbs_links_product on public.pbs_links (product_id);",
+"",
 "create table if not exists public.pbs_deleted_items (",
 "  id bigint generated always as identity primary key,",
 "  table_name text not null,",
@@ -1673,11 +1847,13 @@ const SETUP_SQL = [
 "alter table public.pbs_boxes         enable row level security;",
 "alter table public.pbs_bags          enable row level security;",
 "alter table public.pbs_deleted_items enable row level security;",
+"alter table public.pbs_vyapar_items  enable row level security;",
+"alter table public.pbs_links         enable row level security;",
 "",
 "do $$",
 "declare t text;",
 "begin",
-"  foreach t in array array['pbs_products','pbs_boxes','pbs_bags','pbs_deleted_items'] loop",
+"  foreach t in array array['pbs_products','pbs_boxes','pbs_bags','pbs_deleted_items','pbs_vyapar_items','pbs_links'] loop",
 "    execute format('drop policy if exists %I on public.%I', t||'_read', t);",
 "    execute format('drop policy if exists %I on public.%I', t||'_write', t);",
 "    execute format('create policy %I on public.%I for select to anon, authenticated using (true)', t||'_read', t);",
