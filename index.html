@@ -450,6 +450,11 @@ a{color:var(--maroon);}
   font-size:17px; margin:0 0 10px;
 }
 .prod-card h3 .name{flex:1; min-width:0; word-break:break-word;}
+/* Note naam ke neeche chhoti line me — spec ke teen dabbe ek jaise rehte hain. */
+.prod-note{
+  display:block; margin-top:2px; font-family:'Inter',sans-serif; font-weight:500;
+  font-size:12px; color:var(--warning); letter-spacing:0;
+}
 .spec-grid{
   display:grid; grid-template-columns:repeat(auto-fit, minmax(118px,1fr)); gap:8px;
   margin-bottom:10px;
@@ -1232,7 +1237,7 @@ function productCardHtml(p, opts){
   return `<div class="card prod-card">
     <h3>
       ${p.image_url ? `<img class="prod-thumb" src="${esc(p.image_url)}" alt="" onclick="openLightbox('${esc(p.image_url)}')">` : ''}
-      <span class="name">${markHit(p.name, term)}</span>
+      <span class="name">${markHit(p.name, term)}${p.notes ? `<span class="prod-note">📝 ${esc(p.notes)}</span>` : ''}</span>
       ${boxes.length > 1 ? `<span class="pill" style="background:#FFF7ED; border-color:#F3D9BC; color:#B45309; font-size:11px;">${boxes.length} box sizes</span>` : ''}
     </h3>
     <div class="spec-grid">
