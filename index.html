@@ -620,6 +620,18 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=
 function getDefaultTab(){ return localStorage.getItem(DEFAULT_TAB_KEY) || 'search'; }
 function setDefaultTab(k){ localStorage.setItem(DEFAULT_TAB_KEY, k); }
 
+/* Reload should leave you where you were standing, not throw you back to
+   Search. sessionStorage is the right shelf for that: it survives F5 in this
+   tab and dies with the tab, so opening the app fresh still honours the
+   "app khulte hi kaunsa tab" setting. */
+const LAST_TAB_KEY = 'pbs_last_tab';
+function rememberTab(k){ try{ sessionStorage.setItem(LAST_TAB_KEY, k); }catch(_){} }
+function openingTab(){
+  let last = null;
+  try{ last = sessionStorage.getItem(LAST_TAB_KEY); }catch(_){}
+  return (last && TABS.some(([k])=>k===last)) ? last : getDefaultTab();
+}
+
 /* ---------------- PIN-gated WRITE access ----------------
    Search and viewing are open to anyone who has the link.
    Add / Edit / Delete ask for a PIN once per device and stay
@@ -885,6 +897,7 @@ async function render(){
 }
 function setTab(k){
   state.tab = k;
+  rememberTab(k);
   editingProductId = null; editingBagId = null; boxDraft = []; imageDraft = null;
   render();
 }
@@ -896,8 +909,8 @@ document.addEventListener('click', (e)=>{
 });
 async function onMoreTabSelect(k){
   if(!k) return;
-  if(NO_PIN_MORE_TABS.includes(k)){ state.tab = k; render(); return; }
-  await withPin(async ()=>{ state.tab = k; render(); });
+  if(NO_PIN_MORE_TABS.includes(k)){ state.tab = k; rememberTab(k); render(); return; }
+  await withPin(async ()=>{ state.tab = k; rememberTab(k); render(); });
 }
 function toggleAccordion(id){
   const body = document.getElementById(id+'_body');
@@ -1563,7 +1576,7 @@ function copySetupSql(){
 /* ---------------- boot ---------------- */
 (async function boot(){
   loadMix();
-  state.tab = getDefaultTab();
+  state.tab = openingTab();
   await render();
 })();
 
