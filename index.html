@@ -2052,10 +2052,74 @@ async function renderVyaparTab(box){
         <input id="vq" class="search-safe" placeholder="પ્રોડક્ટ શોધો…" value="${esc(vyaparSearch)}" autocomplete="off">
       </div>
     </div>
+    <div id="vyapar-hits"></div>
     <div id="vyapar-list"></div>`;
   const input = document.getElementById('vq');
-  input.addEventListener('input', ()=>{ vyaparSearch = input.value; paintVyaparList(); });
+  input.addEventListener('input', ()=>{ vyaparSearch = input.value; linkPickFor = null; paintVyaparHits(); paintVyaparList(); });
+  paintVyaparHits();
   paintVyaparList();
+}
+/* Upar wale search me Vyapar ke item bhi — jaise "heat" likho to "9*9 Heat
+   Press", "GYBOOM Heat Press", "Red Heat Press" apne stock ke saath, aur ye
+   bhi ki kaunsi app product se jude hain. Jo juda nahi, use yahin se kisi
+   product ke saath jod do. */
+let linkPickFor = null;   // Vyapar item jise product se jodna hai
+let linkPickTerm = '';
+function productForItem(){
+  const map = {};
+  productsCache.forEach(p => vyaparRowsAll(p.id).forEach(v => { if(!map[v.item_name]) map[v.item_name] = p; }));
+  return map;
+}
+function paintVyaparHits(){
+  const wrap = document.getElementById('vyapar-hits');
+  if(!wrap) return;
+  const t = vyaparSearch.trim().toLowerCase();
+  if(!t){ wrap.innerHTML = ''; return; }
+  const hits = vyaparLive.filter(v => v.item_name.toLowerCase().includes(t)).slice(0, 20);
+  if(!hits.length){ wrap.innerHTML = ''; return; }
+  const owner = productForItem();
+  wrap.innerHTML = `<div class="card">
+    <h3 style="font-size:14px">🔗 Vyapar માં "${esc(vyaparSearch.trim())}" · ${hits.length} item</h3>
+    ${hits.map(v=>{
+      const p = owner[v.item_name];
+      return `<div class="add-hit">
+        <span class="ah-name">${markHit(v.item_name, vyaparSearch.trim())}
+          <span class="mx-sub">${p ? '→ ' + esc(p.name) + (isDiscontinued(p.id) ? ' · ⛔' : '') : 'કોઈ પ્રોડક્ટ સાથે જોડાયેલું નથી'}</span></span>
+        <span class="lh-qty">${fmtQty(v.current_stock)}</span>
+        ${p ? '' : `<button class="primary" onclick="openLinkPick(${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">+ જોડો</button>`}
+      </div>
+      ${linkPickFor === v.item_name ? `<div class="link-pick">
+        <div class="big-search"><span class="mag">🔍</span>
+          <input id="lp-input" class="search-safe" placeholder="કઈ પ્રોડક્ટ સાથે? નામ લખો…" value="${esc(linkPickTerm)}" autocomplete="off"></div>
+        <div id="lp-hits"></div>
+      </div>` : ''}`;
+    }).join('')}
+  </div>`;
+  const lp = document.getElementById('lp-input');
+  if(lp){ lp.addEventListener('input', ()=>{ linkPickTerm = lp.value; paintLinkPickHits(); }); lp.focus(); paintLinkPickHits(); }
+}
+function openLinkPick(itemName){
+  linkPickFor = linkPickFor === itemName ? null : itemName;
+  linkPickTerm = '';
+  paintVyaparHits();
+}
+function paintLinkPickHits(){
+  const wrap = document.getElementById('lp-hits');
+  if(!wrap || !linkPickFor) return;
+  const t = linkPickTerm.trim().toLowerCase();
+  const hits = (t ? productsCache.filter(p => p.name.toLowerCase().includes(t)) : []).slice(0, 15);
+  wrap.innerHTML = t
+    ? (hits.length ? hits.map(p=>`<div class="link-hit" onclick="linkItemToProduct(${p.id}, ${JSON.stringify(linkPickFor).replace(/"/g,'&quot;')})">
+          <span>${markHit(p.name, linkPickTerm.trim())}</span>
+          <span class="lh-qty">${linksFor(p.id).length ? 'જોડાયેલી' : 'બાકી'}</span>
+        </div>`).join('')
+       : `<p class="empty" style="text-align:center">"${esc(linkPickTerm)}" નામની પ્રોડક્ટ નથી.</p>`)
+    : '<p class="config-note" style="margin:8px 0 0">પ્રોડક્ટનું નામ ટાઇપ કરો.</p>';
+}
+async function linkItemToProduct(productId, itemName){
+  await addLink(productId, itemName);
+  linkPickFor = null;
+  paintVyaparHits();
 }
 function setVyaparFilter(f){ vyaparFilter = f; pickerFor = null; openVyaparRow = null; renderTabContent(); }
 function paintVyaparList(){
