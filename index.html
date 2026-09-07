@@ -781,14 +781,14 @@ function friendlyDbError(error){
   const m = (error.message||'').toLowerCase();
   if(m.includes('does not exist') || m.includes('could not find the table')
      || error.code === '42P01' || error.code === 'PGRST205')
-    return 'Database table abhi bani nahi hai. Settings tab kholo, "Setup SQL Copy Karo" dabao aur Supabase SQL Editor me ek baar chala do.';
+    return 'Database table હજી બની નથી. Settings ટૅબ ખોલો, "Setup SQL કૉપી કરો" દબાવો અને Supabase SQL Editor માં એક વાર ચલાવો.';
   if(m.includes('bucket not found'))
-    return 'Image bucket abhi bana nahi hai. Settings ka Setup SQL ek baar chala do.';
-  if(m.includes('duplicate key')) return 'Ye product name pehle se list me hai.';
+    return 'Image bucket હજી બન્યું નથી. Settings નું Setup SQL એક વાર ચલાવો.';
+  if(m.includes('duplicate key')) return 'આ પ્રોડક્ટનું નામ પહેલેથી યાદીમાં છે.';
   if(m.includes('row-level security') || m.includes('permission'))
-    return 'Ye change karne ki permission nahi hai — PIN se Unlock karo.';
-  if(m.includes('failed to fetch')) return 'Internet nahi mil raha. Connection check karke firse try karo.';
-  return error.message || 'Kuch gadbad hui.';
+    return 'આ બદલવાની પરવાનગી નથી — PIN થી Unlock કરો.';
+  if(m.includes('failed to fetch')) return 'ઇન્ટરનેટ મળતું નથી. કનેક્શન ચેક કરીને ફરી પ્રયત્ન કરો.';
+  return error.message || 'કંઈક ગડબડ થઈ.';
 }
 function toast(msg, kind){
   const old = document.getElementById('app-toast'); if(old) old.remove();
@@ -890,7 +890,7 @@ function showDeletePinModal(action){
   const overlay = el(`<div class="modal-backdrop" id="del-pin-modal">
     <div class="modal-box">
       <h3>🗑️ Delete PIN</h3>
-      <p class="config-note">Delete karne ke liye PIN daalo. Har delete par poochha jayega.</p>
+      <p class="config-note">ડિલીટ કરવા માટે PIN નાખો. દર વખતે ડિલીટ પર પુછાશે.</p>
       <div id="del-pin-msg"></div>
       <input id="del-pin-input" type="password" inputmode="numeric" maxlength="6"
              style="width:100%; letter-spacing:.3em; text-align:center; font-size:20px" autofocus>
@@ -904,7 +904,7 @@ function showDeletePinModal(action){
   const submit = async ()=>{
     const pin = document.getElementById('del-pin-input').value.trim();
     if(pin !== DELETE_PIN){
-      document.getElementById('del-pin-msg').innerHTML = '<div class="msg error">Galat PIN.</div>';
+      document.getElementById('del-pin-msg').innerHTML = '<div class="msg error">ખોટો PIN.</div>';
       return;
     }
     overlay.remove();
@@ -921,7 +921,7 @@ function showPinModal(action){
   const overlay = el(`<div class="modal-backdrop" id="pin-modal">
     <div class="modal-box">
       <h3>Enter PIN</h3>
-      <p class="config-note">Add / Edit / Delete karne ke liye zaroori hai. Lock dabane tak is device par unlock rahega.</p>
+      <p class="config-note">Add / Edit / Delete કરવા માટે જરૂરી છે. Lock દબાવો ત્યાં સુધી આ ડિવાઇસ પર ખુલ્લું રહેશે.</p>
       <div id="pin-modal-msg"></div>
       <input id="pin-modal-input" type="password" inputmode="numeric" maxlength="6" style="width:100%; letter-spacing:.3em; text-align:center; font-size:20px" autofocus>
       <div class="modal-actions">
@@ -934,7 +934,7 @@ function showPinModal(action){
   const submit = async ()=>{
     const pin = document.getElementById('pin-modal-input').value.trim();
     const msgBox = document.getElementById('pin-modal-msg');
-    if(pin !== ADMIN_PIN){ msgBox.innerHTML = '<div class="msg error">Wrong PIN.</div>'; return; }
+    if(pin !== ADMIN_PIN){ msgBox.innerHTML = '<div class="msg error">ખોટો PIN.</div>'; return; }
     localStorage.setItem(PIN_UNLOCK_KEY, "true");
     overlay.remove();
     await action();
@@ -980,19 +980,19 @@ async function uploadProductImage(file){
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = 'prod_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
   const {error} = await sb.storage.from(IMAGE_BUCKET).upload(path, file, {cacheControl:'3600', upsert:false});
-  if(error){ toast('Photo upload nahi hua: ' + friendlyDbError(error), 'error'); return null; }
+  if(error){ toast('ફોટો અપલોડ ન થયો: ' + friendlyDbError(error), 'error'); return null; }
   const {data} = sb.storage.from(IMAGE_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 async function onProductImagePick(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  if(!/^image\//.test(file.type)){ toast('Sirf image file chalegi.', 'error'); input.value=''; return; }
-  if(file.size > 8*1024*1024){ toast('Photo 8 MB se choti honi chahiye.', 'error'); input.value=''; return; }
+  if(!/^image\//.test(file.type)){ toast('ફક્ત ઇમેજ ફાઇલ ચાલશે.', 'error'); input.value=''; return; }
+  if(file.size > 8*1024*1024){ toast('ફોટો 8 MB થી નાનો હોવો જોઈએ.', 'error'); input.value=''; return; }
   const btn = document.getElementById('img-pick-label');
   if(btn) btn.textContent = 'Uploading…';
   const url = await uploadProductImage(file);
-  if(url){ imageDraft = url; toast('Photo lag gayi.'); }
+  if(url){ imageDraft = url; toast('ફોટો લાગી ગયો.'); }
   input.value = '';
   renderImagePicker();
 }
@@ -1004,12 +1004,12 @@ function renderImagePicker(){
       ? `<div class="img-preview-wrap">
            <img src="${esc(imageDraft)}" alt="">
            <div style="flex:1; min-width:0;">
-             <div class="config-note" style="margin:0">Photo lagi hui hai.</div>
+             <div class="config-note" style="margin:0">ફોટો લાગેલો છે.</div>
            </div>
-           <button class="danger" onclick="clearProductImage()" style="min-height:38px; padding:7px 12px;">✕ Hatao</button>
+           <button class="danger" onclick="clearProductImage()" style="min-height:38px; padding:7px 12px;">✕ કાઢો</button>
          </div>`
       : '') +
-    `<label class="file-btn" id="img-pick-label" for="p_img">📷 ${imageDraft ? 'Photo Badlo' : 'Product Photo Upload Karo'}</label>
+    `<label class="file-btn" id="img-pick-label" for="p_img">📷 ${imageDraft ? 'ફોટો બદલો' : 'પ્રોડક્ટ ફોટો અપલોડ કરો'}</label>
      <input id="p_img" type="file" accept="image/*" style="display:none" onchange="onProductImagePick(this)">`;
 }
 /* The photo viewer pushes a history entry, so the phone's Back button closes
@@ -1077,7 +1077,7 @@ function productCardHtml(p, opts){
             <span class="bx-wt">${kg(boxWeight(p,b)) || '—'}</span>
           </div>`).join('')
           : `<div class="box-line"><span class="lbl-icon">📦</span><span class="bx-dim">—</span>
-             <span class="bx-sep">box detail baaki hai</span></div>`}
+             <span class="bx-sep">બોક્સ ડિટેલ બાકી છે</span></div>`}
       </div>
       ${opts.stock ? `<div class="stock-wrap">${stockLineHtml(p)}</div>` : ''}
     </div>
@@ -1092,8 +1092,8 @@ function stockLineHtml(p){
   if(!rows.length){
     return `<div class="stock-line zero" onclick="setTab('vyapar')">
       <span class="lbl-icon">🔗</span>
-      <span class="st-qty">Vyapar se juda nahi</span>
-      <span class="st-sub">jodne ke liye dabao</span>
+      <span class="st-qty">Vyapar સાથે જોડાયેલી નથી</span>
+      <span class="st-sub">જોડવા માટે દબાવો</span>
     </div>`;
   }
   const total = stockFor(p.id);
@@ -1224,7 +1224,7 @@ async function renderTabContent(){
     if(state.tab==='settings') return await renderSettingsTab(box);
   }catch(err){
     console.error(err);
-    box.innerHTML = '<div class="msg error"><b>Something broke:</b> ' + esc(err.message || err) + '</div>';
+    box.innerHTML = '<div class="msg error"><b>કંઈક તૂટ્યું:</b> ' + esc(err.message || err) + '</div>';
   }
 }
 
@@ -1264,10 +1264,10 @@ function paintBoxPanel(panel){
     <div class="card sticky-search">
       <div class="big-search">
         <span class="mag">🔍</span>
-        <input id="q" class="search-safe" placeholder="Product ka naam type karo…" value="${esc(searchTerm)}" autocomplete="off">
+        <input id="q" class="search-safe" placeholder="પ્રોડક્ટનું નામ ટાઇપ કરો…" value="${esc(searchTerm)}" autocomplete="off">
       </div>
       <p class="config-note" style="margin:10px 0 0; text-align:center;">
-        Sheet ke SEARCH box jaisa hi — naam type karte hi poora box detail aa jayega.
+        શીટના SEARCH બોક્સ જેવું જ — નામ ટાઇપ કરતાં જ આખી બોક્સ ડિટેલ આવી જશે.
       </p>
     </div>
     <div id="search-results"></div>`;
@@ -1287,15 +1287,15 @@ function paintSearchResults(){
   const t = searchTerm.trim().toLowerCase();
   if(!t){
     wrap.innerHTML = `<div class="card"><p class="empty">
-      Upar naam likhte hi us product ka box size, unit in box, unit weight aur FBA detail dikhega.<br>
-      Total ${productsCache.length} product list me hain.</p></div>`;
+      ઉપર નામ લખતાં જ એ પ્રોડક્ટની બોક્સ સાઇઝ, unit in box અને unit weight દેખાશે.<br>
+      કુલ ${productsCache.length} પ્રોડક્ટ લિસ્ટમાં છે.</p></div>`;
     return;
   }
   const hits = productsCache.filter(p => matchProduct(p, t));
   wrap.innerHTML = hits.length
     ? `<p class="result-count">${hits.length} result${hits.length>1?'s':''}</p>` +
       hits.map(p=>productCardHtml(p, {term: searchTerm.trim(), itemDims:false})).join('')
-    : `<div class="card"><p class="empty">"${esc(searchTerm)}" naam ka koi product nahi mila.</p></div>`;
+    : `<div class="card"><p class="empty">"${esc(searchTerm)}" નામની કોઈ પ્રોડક્ટ મળી નથી.</p></div>`;
 }
 
 /* ---------------- Product Mix (FBA) ----------------
@@ -1319,10 +1319,10 @@ function paintMixPanel(panel){
     <div class="card sticky-search">
       <div class="big-search">
         <span class="mag">🔍</span>
-        <input id="mixq" class="search-safe" placeholder="Product dhundo aur mix me daalo…" value="${esc(mixTerm)}" autocomplete="off">
+        <input id="mixq" class="search-safe" placeholder="પ્રોડક્ટ શોધો અને મિક્સમાં ઉમેરો…" value="${esc(mixTerm)}" autocomplete="off">
       </div>
       <p class="config-note" style="margin:10px 0 0; text-align:center;">
-        Jitne product FBA me ja rahe hain sab add karo — har ek ka unit likhte hi total weight jud jayega.
+        જેટલી પ્રોડક્ટ FBA માં જાય છે એ બધી ઉમેરો — દરેકના unit લખતાં જ કુલ વજન ઉમેરાતું જશે.
       </p>
       <div id="mix-hits"></div>
     </div>
@@ -1334,7 +1334,7 @@ function paintMixPanel(panel){
 }
 function unitWeightLine(p){
   const w = kg(p.unit_weight);
-  return '<span class="mx-sub">' + (w ? esc(w) + ' / unit' : 'unit weight bhara nahi hai') + '</span>';
+  return '<span class="mx-sub">' + (w ? esc(w) + ' / unit' : 'unit weight ભરેલું નથી') + '</span>';
 }
 function paintMixHits(){
   const wrap = document.getElementById('mix-hits');
@@ -1343,13 +1343,13 @@ function paintMixHits(){
   if(!t){ wrap.innerHTML = ''; return; }
   const hits = productsCache.filter(p => matchProduct(p, t)).slice(0, 15);
   if(!hits.length){
-    wrap.innerHTML = `<p class="empty" style="text-align:center">"${esc(mixTerm)}" naam ka koi product nahi mila.</p>`;
+    wrap.innerHTML = `<p class="empty" style="text-align:center">"${esc(mixTerm)}" નામની કોઈ પ્રોડક્ટ મળી નથી.</p>`;
     return;
   }
   wrap.innerHTML = hits.map(p=>`<div class="add-hit">
       <span class="ah-name">${markHit(p.name, mixTerm.trim())}${unitWeightLine(p)}</span>
       ${mixList.some(r=>r.id===p.id)
-        ? '<span class="pill sold">✓ Mix me hai</span>'
+        ? '<span class="pill sold">✓ મિક્સમાં છે</span>'
         : `<button class="primary" onclick="addToMix(${p.id})">+ Add</button>`}
     </div>`).join('');
 }
@@ -1364,7 +1364,7 @@ function removeFromMix(id){
 }
 function clearMix(){
   if(!mixList.length) return;
-  if(!confirm('Poora mix hata dein?')) return;
+  if(!confirm('આખું મિક્સ કાઢી નાખવું છે?')) return;
   mixList = [];
   saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
 }
@@ -1383,8 +1383,8 @@ function paintMixList(){
   if(!wrap) return;
   if(!mixList.length){
     wrap.innerHTML = `<div class="card"><p class="empty">
-      Mix abhi khaali hai. Upar naam dhundo aur "+ Add" dabao — har product ka
-      FBA unit likhte hi sabka total weight neeche jud jayega.</p></div>`;
+      મિક્સ હજી ખાલી છે. ઉપર નામ શોધો અને "+ Add" દબાવો — દરેક પ્રોડક્ટના
+      FBA unit લખતાં જ નીચે કુલ વજન ઉમેરાતું જશે.</p></div>`;
     return;
   }
   const rows = mixList.map(r=>{
@@ -1401,7 +1401,7 @@ function paintMixList(){
   wrap.innerHTML = `<div class="card">
     <div class="mix-head">
       <h3>🧮 FBA Mix</h3>
-      <button onclick="clearMix()">Sab hatao</button>
+      <button onclick="clearMix()">બધું કાઢો</button>
     </div>
     ${rows}
     <div id="mix-total"></div>
@@ -1419,19 +1419,19 @@ function paintMixTotal(){
     units += u;
     const w = num(p.unit_weight);
     // Ek bhi product ka unit weight blank ho to uska weight guess nahi karte —
-    // total ke neeche saaf likh dete hain ki wo isme joda nahi gaya.
+    // total ke neeche saaf likh dete hain ki wo isme જોડાયેલી નથી gaya.
     if(w === null){ if(u > 0) unknown++; }
     else weight += u * w;
   });
   wrap.innerHTML = `<div class="mix-total">
       <span>
         <div class="t-lbl">Total FBA Weight</div>
-        <div class="t-sub">${mixList.length} product · ${fmtWt(units)} unit</div>
+        <div class="t-sub">${mixList.length} પ્રોડક્ટ · ${fmtWt(units)} unit</div>
       </span>
       <span class="t-val">${esc(fmtWt(weight) || '0')} kg</span>
     </div>` +
     (unknown ? `<p class="config-note" style="margin:8px 0 0; color:var(--warning)">
-      ⚠️ ${unknown} product ka unit weight bhara nahi hai, isliye uska weight is total me nahi juda.</p>` : '');
+      ⚠️ ${unknown} પ્રોડક્ટનું unit weight ભરેલું નથી, એટલે એનું વજન આ કુલમાં ઉમેરાયું નથી.</p>` : '');
 }
 
 /* ---------------- PRODUCTS tab (add / edit / delete) ---------------- */
@@ -1444,7 +1444,7 @@ async function renderProductsTab(box){
   // saath rehte to ek hi id (p_name waghairah) do jagah ho jaati aur form
   // galat khaane me likhne lagta.
   box.innerHTML = `
-    ${!on ? '<p class="config-note">🔒 Add / Edit / Delete ke liye upar "Unlock" dabao.</p>' : (editing ? '' : `
+    ${!on ? '<p class="config-note">🔒 Add / Edit / Delete માટે ઉપર "Unlock" દબાવો.</p>' : (editing ? '' : `
     <div class="card">
       <div class="accordion-header" onclick="toggleAccordion('acc_prod')">
         <h3>➕ Add Product</h3>
@@ -1457,7 +1457,7 @@ async function renderProductsTab(box){
     <div class="card sticky-search">
       <div class="big-search">
         <span class="mag">🔍</span>
-        <input id="plist_q" class="search-safe" placeholder="List me se dhundo…" autocomplete="off">
+        <input id="plist_q" class="search-safe" placeholder="લિસ્ટમાંથી શોધો…" autocomplete="off">
       </div>
       ${error?`<div class="msg error" style="margin-top:12px">${esc(friendlyDbError(error))}</div>`:''}
     </div>
@@ -1492,7 +1492,7 @@ function productFormHtml(editing){
       </div>
       <div class="er-boxes">
         <div id="box-editor"></div>
-        <button onclick="addBoxDraftRow()" class="er-addbox">➕ Ek aur Box Size</button>
+        <button onclick="addBoxDraftRow()" class="er-addbox">➕ બીજું એક Box Size</button>
       </div>
       <div class="er-actions">
         <button class="primary" onclick="saveProduct()">${editing?'Save':'Add Product'}</button>
@@ -1501,7 +1501,7 @@ function productFormHtml(editing){
     </div>
     <div class="er-second">
       <div class="field"><label>Note</label>
-        <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="optional" style="width:100%"></div>
+        <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="મરજિયાત" style="width:100%"></div>
       <div id="img-picker"></div>
     </div>`;
 }
@@ -1513,12 +1513,12 @@ function paintProductsList(){
   // se mel na khaye — warna form beech kaam me gayab ho jaata.
   const list = t ? productsCache.filter(p => matchProduct(p,t) || p.id === editingProductId) : productsCache;
   const editing = editingProductId ? productsCache.find(p=>p.id===editingProductId) : null;
-  wrap.innerHTML = `<p class="result-count">${list.length} of ${productsCache.length} products</p>` +
+  wrap.innerHTML = `<p class="result-count">${productsCache.length} માંથી ${list.length} પ્રોડક્ટ</p>` +
     (list.length
       ? list.map(p => p.id === editingProductId
           ? `<div class="card edit-inline"><h3>✏️ ${esc(p.name)}</h3>${productFormHtml(editing)}</div>`
           : productCardHtml(p, {editable: unlocked(), term: t, stock: true})).join('')
-      : '<div class="card"><p class="empty">Koi product nahi mila.</p></div>');
+      : '<div class="card"><p class="empty">કોઈ પ્રોડક્ટ મળી નથી.</p></div>');
   if(editing){ renderBoxEditor(); renderImagePicker(); }
 }
 function renderBoxEditor(){
@@ -1559,7 +1559,7 @@ async function editProduct(id){
 async function saveProduct(){
   await withPin(async ()=>{
     const name = document.getElementById('p_name').value.trim();
-    if(!name){ toast('Product name likhna zaroori hai.', 'error'); return; }
+    if(!name){ toast('પ્રોડક્ટનું નામ લખવું જરૂરી છે.', 'error'); return; }
     const uw = document.getElementById('p_uw').value;
     const payload = {
       name,
@@ -1594,7 +1594,7 @@ async function saveProduct(){
       const {error} = await sb.from('pbs_boxes').insert(rows);
       if(error){ toast(friendlyDbError(error), 'error'); return; }
     }
-    toast(editingProductId ? 'Product update ho gaya.' : 'Product add ho gaya.');
+    toast(editingProductId ? 'પ્રોડક્ટ અપડેટ થઈ ગઈ.' : 'પ્રોડક્ટ ઉમેરાઈ ગઈ.');
     editingProductId = null; boxDraft = []; imageDraft = null;
     await render();
   });
@@ -1603,7 +1603,7 @@ async function deleteProduct(id){
   await withDeletePin(async ()=>{
     const p = productsCache.find(x=>x.id===id);
     if(!p) return;
-    if(!confirm('"' + p.name + '" delete karna hai?\n\nDeleted Items tab se wapas restore kar sakte ho.')) return;
+    if(!confirm('"' + p.name + '" ડિલીટ કરવી છે?\n\nDeleted Items ટૅબમાંથી પાછી લાવી શકાશે.')) return;
     const snapshot = {
       name:p.name, unit_weight:p.unit_weight, fba_unit:p.fba_unit,
       item_dimension:p.item_dimension, item_box_dimension:p.item_box_dimension,
@@ -1616,7 +1616,7 @@ async function deleteProduct(id){
     if(snapErr){ toast(friendlyDbError(snapErr), 'error'); return; }
     const {error} = await sb.from('pbs_products').delete().eq('id', id);
     if(error){ toast(friendlyDbError(error), 'error'); return; }
-    toast('Delete ho gaya — Deleted Items se restore kar sakte ho.');
+    toast('ડિલીટ થઈ ગયું — Deleted Items માંથી પાછું લાવી શકાશે.');
     await render();
   });
 }
@@ -1634,15 +1634,15 @@ async function renderBoxSizeTab(box){
     <div class="card">
       <h3>📐 Box Size</h3>
       <p class="config-note" style="margin-top:-4px">
-        Har Item Box Dimension ek baar, aur uske saath wo product jo usi box me jaate hain.
-        Kisi bhi size par dabakar poori list khol lo.
+        દરેક Item Box Dimension એક વાર, અને એની સાથે એ પ્રોડક્ટ જે એ જ બોક્સમાં જાય છે.
+        કોઈ પણ સાઇઝ પર દબાવીને આખી યાદી ખોલો.
       </p>
       ${error?`<div class="msg error" style="margin-top:12px">${esc(friendlyDbError(error))}</div>`:''}
     </div>
     <div class="card sticky-search">
       <div class="big-search">
         <span class="mag">🔍</span>
-        <input id="bsq" class="search-safe" placeholder="Box size ya product ka naam…" value="${esc(boxSizeTerm)}" autocomplete="off">
+        <input id="bsq" class="search-safe" placeholder="બોક્સ સાઇઝ કે પ્રોડક્ટનું નામ…" value="${esc(boxSizeTerm)}" autocomplete="off">
       </div>
     </div>
     <div id="boxsize-list"></div>`;
@@ -1675,18 +1675,26 @@ function paintBoxSizeList(){
   }
   const withBox = productsCache.filter(p=>(p.item_box_dimension||'').trim()).length;
   if(!groups.length){
-    wrap.innerHTML = `<div class="card"><p class="empty">"${esc(boxSizeTerm)}" se kuch nahi mila.</p></div>`;
+    wrap.innerHTML = `<div class="card"><p class="empty">"${esc(boxSizeTerm)}" થી કંઈ મળ્યું નથી.</p></div>`;
     return;
   }
-  wrap.innerHTML = `<p class="result-count">${groups.length} box size · ${withBox} product par lagi hai
-      · ${productsCache.length - withBox} me abhi bhari nahi</p>` +
+  // Search chalu ho to ginti bhi wahi dikhao jo saamne hai — filter ki hui
+  // list ke saath poori list ka number likhna gumraah karta hai.
+  const shown = groups.reduce((n,g)=>n + g.products.length, 0);
+  wrap.innerHTML = `<p class="result-count">${
+      t ? `${groups.length} બોક્સ સાઇઝ · ${shown} પ્રોડક્ટ`
+        : `${groups.length} બોક્સ સાઇઝ · ${withBox} પ્રોડક્ટ પર લાગેલી છે
+      · ${productsCache.length - withBox} માં હજી ભરેલી નથી`}</p>` +
     groups.map(g=>`<div class="card bs-card">
       <div class="bs-head" onclick="toggleBoxSize(${JSON.stringify(g.dim).replace(/"/g,'&quot;')})">
         <span class="bs-dim">${markHit(g.dim, boxSizeTerm.trim())}</span>
-        <span class="pill">${g.products.length} product</span>
-        <span class="bs-caret">${(t || openBoxSize===g.dim) ? '▴' : '▾'}</span>
+        <span class="pill">${g.products.length} પ્રોડક્ટ</span>
+        <span class="bs-caret">${openBoxSize===g.dim ? '▴' : '▾'}</span>
       </div>
-      <div class="bs-body" style="display:${(t || openBoxSize===g.dim) ? '' : 'none'}">
+      <!-- Search karte waqt bhi list band hi rehti hai — 47 naam apne aap
+           khul jaate the aur baaki size neeche dab jaate the. Kholna dabane
+           par hi hota hai. -->
+      <div class="bs-body" style="display:${openBoxSize===g.dim ? '' : 'none'}">
         ${g.products.map(p=>`<div class="bs-item">
           <span class="bs-name">${markHit(p.name, boxSizeTerm.trim())}</span>
           <span class="bs-wt">${kg(p.unit_weight) || '—'}</span>
@@ -1722,30 +1730,30 @@ async function renderVyaparTab(box){
     <div class="card">
       <h3>🔗 Vyapar Stock</h3>
       <p class="config-note" style="margin-top:-4px">
-        App ka product aur Vyapar ka item naam yahan jodo. Ek product ke saath kai Vyapar item
-        jud sakte hain — jaise CDSA ke saath CDSA-HONDA, CDSA-TATA… — aur unka stock jud kar
-        ek hi number banta hai. Search me isse kuch nahi badalta.
+        અહીં એપની પ્રોડક્ટ અને Vyapar નું આઇટમ નામ જોડો. એક પ્રોડક્ટ સાથે ઘણા Vyapar આઇટમ
+        જોડાઈ શકે — જેમ કે CDSA સાથે CDSA-HONDA, CDSA-TATA… — અને એ બધાનો સ્ટોક ભેગો થઈને
+        એક જ આંકડો બને છે. Search માં આનાથી કંઈ બદલાતું નથી.
       </p>
       <div class="grid-stats grid-stats-2col" style="margin-top:12px">
-        <div class="stat stat-good"><div class="num">${linked}</div><div class="lbl">jud gaye</div></div>
+        <div class="stat stat-good"><div class="num">${linked}</div><div class="lbl">જોડાઈ ગઈ</div></div>
         <div class="stat ${productsCache.length-linked ? 'stat-bad' : 'stat-neutral'}">
-          <div class="num">${productsCache.length - linked}</div><div class="lbl">baaki hain</div></div>
+          <div class="num">${productsCache.length - linked}</div><div class="lbl">બાકી છે</div></div>
         <div class="stat stat-info"><div class="num">${vyaparCache.length}</div><div class="lbl">Vyapar item</div></div>
       </div>
       <p class="config-note" style="margin:12px 0 0">
-        ${synced ? '📅 Vyapar se aakhri baar liya gaya: <b>' + esc(synced.toLocaleString('en-IN')) + '</b>. Ye abhi apne aap update nahi hota — AVEDIA PC se sync jodna baaki hai.'
-                 : 'Abhi tak Vyapar se stock nahi aaya.'}
+        ${synced ? '📅 Vyapar માંથી છેલ્લે લીધેલું: <b>' + esc(synced.toLocaleString('en-IN')) + '</b>. આ હજી જાતે અપડેટ થતું નથી — AVEDIA PC થી sync જોડવાનું બાકી છે.'
+                 : 'હજી સુધી Vyapar માંથી સ્ટોક આવ્યો નથી.'}
       </p>
     </div>
     <div class="card">
       <div class="segmented">
-        <button class="${vyaparFilter==='unlinked'?'on':''}" onclick="setVyaparFilter('unlinked')">Baaki</button>
-        <button class="${vyaparFilter==='linked'?'on':''}"   onclick="setVyaparFilter('linked')">Jude hue</button>
-        <button class="${vyaparFilter==='all'?'on':''}"      onclick="setVyaparFilter('all')">Sab</button>
+        <button class="${vyaparFilter==='unlinked'?'on':''}" onclick="setVyaparFilter('unlinked')">બાકી</button>
+        <button class="${vyaparFilter==='linked'?'on':''}"   onclick="setVyaparFilter('linked')">જોડાયેલી</button>
+        <button class="${vyaparFilter==='all'?'on':''}"      onclick="setVyaparFilter('all')">બધી</button>
       </div>
       <div class="big-search">
         <span class="mag">🔍</span>
-        <input id="vq" class="search-safe" placeholder="Product dhundo…" value="${esc(vyaparSearch)}" autocomplete="off">
+        <input id="vq" class="search-safe" placeholder="પ્રોડક્ટ શોધો…" value="${esc(vyaparSearch)}" autocomplete="off">
       </div>
     </div>
     <div id="vyapar-list"></div>`;
@@ -1770,24 +1778,24 @@ function paintVyaparList(){
   });
   if(!list.length){
     wrap.innerHTML = `<div class="card"><p class="empty">${
-      vyaparFilter==='unlinked' ? 'Shabaash — koi product baaki nahi raha.' : 'Yahan kuch nahi mila.'}</p></div>`;
+      vyaparFilter==='unlinked' ? 'સરસ — કોઈ પ્રોડક્ટ બાકી નથી.' : 'અહીં કંઈ મળ્યું નથી.'}</p></div>`;
     return;
   }
-  wrap.innerHTML = `<p class="result-count">${list.length} product</p>` + list.map(p=>{
+  wrap.innerHTML = `<p class="result-count">${list.length} પ્રોડક્ટ</p>` + list.map(p=>{
     const rows = vyaparRowsFor(p.id);
     const total = stockFor(p.id);
     return `<div class="card">
       <div class="link-row" style="background:none; padding:0; margin:0">
         <span class="lr-name">${esc(p.name)}</span>
-        ${rows.length ? `<span class="pill sold">${fmtQty(total)} stock</span>` : '<span class="pill unsold">joda nahi</span>'}
-        <button class="primary" onclick="openPicker(${p.id})">+ Vyapar naam jodo</button>
+        ${rows.length ? `<span class="pill sold">${fmtQty(total)} સ્ટોક</span>` : '<span class="pill unsold">જોડાયેલી નથી</span>'}
+        <button class="primary" onclick="openPicker(${p.id})">+ Vyapar નામ જોડો</button>
       </div>
       ${rows.length ? `<div class="stock-parts">
         ${linksFor(p.id).map(l=>{
           const v = l.is_prefix ? null : vyaparIndex[String(l.pattern).toLowerCase()];
           return `<div class="stock-part">
             <span class="sp-name">${l.is_prefix ? esc(l.pattern) + '…' : esc(l.pattern)}${
-              v ? '' : '<span class="mx-sub">Vyapar me ye naam ab nahi hai</span>'}</span>
+              v ? '' : '<span class="mx-sub">Vyapar માં આ નામ હવે નથી</span>'}</span>
             <span class="sp-qty">${v ? fmtQty(v.current_stock) : ''}</span>
             <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
           </div>`;
@@ -1809,7 +1817,7 @@ function pickerHtml(p){
   return `<div class="link-pick">
     <div class="big-search">
       <span class="mag">🔍</span>
-      <input id="pick-input" class="search-safe" placeholder="Vyapar ka naam dhundo…" value="${esc(pickerTerm)}" autocomplete="off">
+      <input id="pick-input" class="search-safe" placeholder="Vyapar નું નામ શોધો…" value="${esc(pickerTerm)}" autocomplete="off">
     </div>
     <div id="pick-hits"></div>
   </div>`;
@@ -1823,7 +1831,7 @@ function paintPickerHits(){
   const wrap = document.getElementById('pick-hits');
   if(!wrap || !pickerFor) return;
   const t = pickerTerm.trim().toLowerCase();
-  if(!t){ wrap.innerHTML = '<p class="config-note" style="margin:8px 0 0">Vyapar ka naam type karo.</p>'; return; }
+  if(!t){ wrap.innerHTML = '<p class="config-note" style="margin:8px 0 0">Vyapar નું નામ ટાઇપ કરો.</p>'; return; }
   const taken = {};
   linksCache.forEach(l => { if(l.product_id === pickerFor) taken[String(l.pattern).toLowerCase()] = 1; });
   const hits = vyaparCache.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
@@ -1832,7 +1840,7 @@ function paintPickerHits(){
         <span>${markHit(v.item_name, pickerTerm.trim())}</span>
         <span class="lh-qty">${fmtQty(v.current_stock)}</span>
       </div>`).join('')
-    : `<p class="empty" style="text-align:center">"${esc(pickerTerm)}" Vyapar me nahi mila.</p>`;
+    : `<p class="empty" style="text-align:center">"${esc(pickerTerm)}" Vyapar માં મળ્યું નથી.</p>`;
 }
 async function addLink(productId, pattern){
   const {data, error} = await sb.from('pbs_links')
@@ -1841,14 +1849,14 @@ async function addLink(productId, pattern){
   if(error){ toast(friendlyDbError(error), 'error'); return; }
   linksCache.push(data);
   pickerTerm = '';
-  toast(pattern + ' jud gaya.');
+  toast(pattern + ' જોડાઈ ગયું.');
   paintVyaparList();
 }
 async function removeLink(linkId){
   const {error} = await sb.from('pbs_links').delete().eq('id', linkId);
   if(error){ toast(friendlyDbError(error), 'error'); return; }
   linksCache = linksCache.filter(l => l.id !== linkId);
-  toast('Hata diya.');
+  toast('કાઢી નાખ્યું.');
   paintVyaparList();
 }
 
@@ -1859,7 +1867,7 @@ async function renderBagsTab(box){
   const bags = data || [];
   const editing = editingBagId ? bags.find(b=>b.id===editingBagId) : null;
   box.innerHTML = `
-    ${!on ? '<p class="config-note">🔒 Add / Edit / Delete ke liye upar "Unlock" dabao.</p>' : `
+    ${!on ? '<p class="config-note">🔒 Add / Edit / Delete માટે ઉપર "Unlock" દબાવો.</p>' : `
     <div class="card">
       <div class="accordion-header" onclick="toggleAccordion('acc_bag')">
         <h3>${editing ? '✏️ Edit Bag' : '➕ Add Bag'}</h3>
@@ -1890,7 +1898,7 @@ async function renderBagsTab(box){
             <button onclick="editBag(${b.id})" style="padding:5px 9px; min-height:32px;">✏️</button>
             <button class="danger" onclick="deleteBag(${b.id})" style="padding:5px 9px; min-height:32px;">🗑️</button>
           </td>`:''}
-        </tr>`).join('')}</tbody></table>` : '<p class="empty">Koi bag size add nahi hua.</p>'}
+        </tr>`).join('')}</tbody></table>` : '<p class="empty">કોઈ bag size ઉમેરાયું નથી.</p>'}
     </div>`;
   if(editing) openAccordion('acc_bag');
 }
@@ -1898,7 +1906,7 @@ async function editBag(id){ await withPin(async ()=>{ editingBagId = id; await r
 async function saveBag(){
   await withPin(async ()=>{
     const code = document.getElementById('b_code').value.trim();
-    if(!code){ toast('Bag code likhna zaroori hai.', 'error'); return; }
+    if(!code){ toast('Bag code લખવો જરૂરી છે.', 'error'); return; }
     const payload = { code, product: document.getElementById('b_prod').value.trim() || null };
     let error;
     if(editingBagId){
@@ -1909,7 +1917,7 @@ async function saveBag(){
       ({error} = await sb.from('pbs_bags').insert(payload));
     }
     if(error){ toast(friendlyDbError(error), 'error'); return; }
-    toast(editingBagId ? 'Bag update ho gaya.' : 'Bag add ho gaya.');
+    toast(editingBagId ? 'Bag અપડેટ થઈ ગયું.' : 'Bag ઉમેરાઈ ગયું.');
     editingBagId = null;
     await render();
   });
@@ -1918,7 +1926,7 @@ async function deleteBag(id){
   await withDeletePin(async ()=>{
     const {data} = await sb.from('pbs_bags').select('*').eq('id', id).single();
     if(!data) return;
-    if(!confirm('Bag "' + data.code + '" delete karna hai?')) return;
+    if(!confirm('Bag "' + data.code + '" ડિલીટ કરવું છે?')) return;
     const {error:snapErr} = await sb.from('pbs_deleted_items').insert({
       table_name:'pbs_bags',
       row_data:{code:data.code, product:data.product, sort_order:data.sort_order},
@@ -1927,7 +1935,7 @@ async function deleteBag(id){
     if(snapErr){ toast(friendlyDbError(snapErr), 'error'); return; }
     const {error} = await sb.from('pbs_bags').delete().eq('id', id);
     if(error){ toast(friendlyDbError(error), 'error'); return; }
-    toast('Bag delete ho gaya.');
+    toast('Bag ડિલીટ થઈ ગયું.');
     await render();
   });
 }
@@ -1938,16 +1946,16 @@ async function renderDeletedTab(box){
   const items = data || [];
   box.innerHTML = `<div class="card">
     <h3>♻️ Deleted Items</h3>
-    <p class="config-note" style="margin-top:-4px">Galti se delete hua product ya bag yahan se wapas la sakte ho.</p>
+    <p class="config-note" style="margin-top:-4px">ભૂલથી ડિલીટ થયેલી પ્રોડક્ટ કે bag અહીંથી પાછું લાવી શકાય છે.</p>
     ${error?`<div class="msg error">${esc(friendlyDbError(error))}</div>`:''}
     ${items.length ? items.map(it=>`<div class="flat-entry">
         <span style="flex:1; min-width:0; font-weight:600;">${esc(it.summary||it.table_name)}</span>
         <span class="config-note" style="margin:0; font-size:11px;">${new Date(it.deleted_at).toLocaleDateString('en-IN')}</span>
         <span class="flat-actions">
           <button onclick="restoreDeleted(${it.id})">↩️ Restore</button>
-          <button class="danger" onclick="forgetDeleted(${it.id})" title="Hamesha ke liye hatao">🗑️</button>
+          <button class="danger" onclick="forgetDeleted(${it.id})" title="હંમેશ માટે કાઢી નાખો">🗑️</button>
         </span>
-      </div>`).join('') : '<p class="empty">Kuch delete nahi hua hai.</p>'}
+      </div>`).join('') : '<p class="empty">કંઈ ડિલીટ થયું નથી.</p>'}
   </div>`;
 }
 async function restoreDeleted(id){
@@ -1973,7 +1981,7 @@ async function restoreDeleted(id){
       if(error){ toast(friendlyDbError(error), 'error'); return; }
     }
     await sb.from('pbs_deleted_items').delete().eq('id', id);
-    toast('Wapas restore ho gaya.');
+    toast('પાછું આવી ગયું.');
     await render();
   });
 }
@@ -1981,7 +1989,7 @@ async function forgetDeleted(id){
   // Ye asli mitana hai — restore ka rasta bhi band ho jata hai, isliye
   // yahan bhi wahi delete PIN.
   await withDeletePin(async ()=>{
-    if(!confirm('Ye history entry hamesha ke liye hata dein? Phir restore nahi ho payega.')) return;
+    if(!confirm('આ history entry હંમેશ માટે કાઢી નાખવી છે? પછી પાછી નહીં આવે.')) return;
     const {error} = await sb.from('pbs_deleted_items').delete().eq('id', id);
     if(error){ toast(friendlyDbError(error), 'error'); return; }
     await render();
@@ -1996,12 +2004,12 @@ async function renderSettingsTab(box){
       <h3>⚙️ Settings</h3>
       <div class="field"><label>Theme</label>
         <select onchange="setTheme(this.value)">
-          <option value="auto"  ${theme==='auto'?'selected':''}>Auto (phone jaisa)</option>
+          <option value="auto"  ${theme==='auto'?'selected':''}>Auto (ફોન જેવું)</option>
           <option value="light" ${theme==='light'?'selected':''}>Light</option>
           <option value="dark"  ${theme==='dark'?'selected':''}>Dark</option>
         </select>
       </div>
-      <div class="field"><label>App khulte hi kaunsa tab</label>
+      <div class="field"><label>એપ ખૂલતાં જ કયું ટૅબ</label>
         <select onchange="setDefaultTab(this.value)">
           ${TABS.filter(([k])=>!HIDDEN_TAB_KEYS.includes(k)).map(([k,l])=>
             '<option value="' + k + '" ' + (getDefaultTab()===k?'selected':'') + '>' + l + '</option>').join('')}
@@ -2010,15 +2018,15 @@ async function renderSettingsTab(box){
     </div>
     <div class="card">
       <h3>📤 Export</h3>
-      <p class="config-note" style="margin-top:-4px">Poori list ek CSV file me — Excel me kholi ja sakti hai.</p>
+      <p class="config-note" style="margin-top:-4px">આખી યાદી એક CSV ફાઇલમાં — Excel માં ખૂલી શકે છે.</p>
       <button onclick="exportCSV()" style="width:100%">⬇️ Download CSV</button>
     </div>
     <div class="card">
       <h3>🛠️ Database Setup</h3>
       <p class="config-note" style="margin-top:-4px">
-        Sirf pehli baar chahiye. Supabase → SQL Editor me ye SQL ek baar chalane se tables aur image bucket ban jaate hain.
+        ફક્ત પહેલી વાર જોઈએ. Supabase → SQL Editor માં આ SQL એક વાર ચલાવવાથી tables અને image bucket બની જાય છે.
       </p>
-      <button onclick="copySetupSql()" style="width:100%">📋 Setup SQL Copy Karo</button>
+      <button onclick="copySetupSql()" style="width:100%">📋 Setup SQL કૉપી કરો</button>
     </div>`;
 }
 function exportCSV(){
@@ -2136,8 +2144,8 @@ const SETUP_SQL = [
 ].join('\n');
 function copySetupSql(){
   navigator.clipboard.writeText(SETUP_SQL)
-    .then(()=>toast('SQL copy ho gaya — Supabase SQL Editor me paste karo.'))
-    .catch(()=>{ console.log(SETUP_SQL); toast('Copy nahi hua — console me print kar diya.', 'error'); });
+    .then(()=>toast('SQL કૉપી થઈ ગયું — Supabase SQL Editor માં પેસ્ટ કરો.'))
+    .catch(()=>{ console.log(SETUP_SQL); toast('કૉપી ન થયું — console માં પ્રિન્ટ કરી દીધું.', 'error'); });
 }
 
 /* ---------------- boot ---------------- */
