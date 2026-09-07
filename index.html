@@ -324,20 +324,24 @@ a{color:var(--maroon);}
    markup is untouched — only where things sit changes. */
 @media (min-width:900px){
   .bottom-nav{
-    top:0; bottom:auto; max-width:none; width:100%; justify-content:center; gap:4px;
-    padding:8px 24px; border-top:none; border-bottom:1px solid var(--rule);
+    top:0; bottom:auto; max-width:none; width:100%; justify-content:center; gap:6px;
+    padding:10px 24px; border-top:none; border-bottom:1px solid var(--rule);
     box-shadow:0 2px 14px rgba(20,22,43,.06);
   }
   .nav-item{
-    flex:0 0 auto; flex-direction:row; gap:8px; padding:9px 18px; font-size:13.5px;
+    flex:0 0 auto; flex-direction:row; gap:10px; padding:13px 30px; font-size:15.5px;
+    border-radius:12px;
   }
-  .nav-item .nav-icon{width:auto; height:auto; font-size:16px; border-radius:8px; padding:2px 4px;}
-  .nav-item.active .nav-icon{transform:none;}
+  .nav-item:hover{background:var(--paper-dark);}
+  .nav-item .nav-icon{width:auto; height:auto; font-size:21px; border-radius:8px; padding:0;}
+  .nav-item.active{background:#EEF2FF;}
+  .nav-item.active .nav-icon{background:none; transform:none;}
   .nav-more{margin-left:8px;}
   .more-menu{top:calc(100% + 10px); bottom:auto; right:0;}
+  .more-menu-item{font-size:15px; padding:12px 15px;}
 
   /* Poori screen use karo — bade monitor par bhi dono taraf khaali patti nahi. */
-  .app{max-width:none; padding:74px 28px 48px;}
+  .app{max-width:none; padding:88px 28px 48px;}
   .hero-banner{
     margin:12px 0 22px; border-radius:22px; padding:24px 28px 26px;
   }
@@ -345,9 +349,16 @@ a{color:var(--maroon);}
 
   /* Results become a wall of cards instead of one long column. */
   #search-results, #products-list{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(330px,1fr));
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(390px,1fr));
     gap:14px; align-items:start;
   }
+  /* Ek card ke saare spec ek hi line me — do-teen alag alag dabbe wrap hokar
+     neeche nahi jaate. auto-flow column isliye ki spec kitne bhi hon (Note ke
+     saath ya bina), sab ek row me barabar baant jaate hain. */
+  #search-results .spec-grid, #products-list .spec-grid{
+    grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr);
+  }
+  #search-results .spec .v, #products-list .spec .v{font-size:14px;}
   #search-results > .result-count, #products-list > .result-count,
   #search-results > .card:only-child, #products-list > .card:only-child{grid-column:1/-1;}
   #search-results > .card, #products-list > .card{margin-bottom:0;}
