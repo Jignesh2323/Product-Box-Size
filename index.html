@@ -558,6 +558,10 @@ a{color:var(--maroon);}
 .stock-line.low .st-qty{color:#B45309;}
 :root[data-theme="dark"] .stock-line.low{background:#3A2A0E; border-color:#7A5A1A;}
 :root[data-theme="dark"] .stock-line.low .st-qty{color:#FBBF24;}
+.stock-part.lowpart{background:#FFFBEB; margin:0 -6px; padding-left:6px; padding-right:6px; border-radius:8px;}
+:root[data-theme="dark"] .stock-part.lowpart{background:#3A2A0E;}
+.sp-qty.lowq{color:#B45309;}
+:root[data-theme="dark"] .sp-qty.lowq{color:#FBBF24;}
 .stock-line.disc{background:var(--paper-dark); border-color:var(--rule); opacity:.8;}
 .stock-line.disc .st-qty{color:var(--ink-soft); text-decoration:line-through;}
 .st-tag{
@@ -842,11 +846,28 @@ function isDiscontinued(productId){
 /* Kam stock: 10 se neeche (0 samet). Discontinued product isme nahi ginte —
    jo band hi ho chuka hai uska khatam hona koi chetavni nahi. */
 const LOW_STOCK_AT = 10;
+function isLowQty(n){ return n !== null && n !== undefined && n < LOW_STOCK_AT; }
+/* Ek entry = ek chetavni. Akela item waala product apne total se; family
+   (CDSA jaise) me har variant alag — total 36,000 ho to bhi CDSA STRIP ke 3
+   ko chhupne nahi dena. */
 function lowStockProducts(){
-  return productsCache
-    .map(p => ({p, total: stockFor(p.id)}))
-    .filter(x => x.total !== null && x.total < LOW_STOCK_AT && !isDiscontinued(x.p.id))
-    .sort((a,b) => a.total - b.total);
+  const out = [];
+  productsCache.forEach(p=>{
+    if(isDiscontinued(p.id)) return;
+    const rows = vyaparRowsFor(p.id);
+    if(!rows.length) return;
+    if(rows.length === 1){
+      const t = num(rows[0].current_stock) || 0;
+      if(isLowQty(t)) out.push({p, label: p.name, total: t});
+    } else {
+      rows.forEach(v=>{
+        if(v.is_discontinued) return;
+        const t = num(v.current_stock) || 0;
+        if(isLowQty(t)) out.push({p, label: p.name + ' → ' + v.item_name, total: t});
+      });
+    }
+  });
+  return out.sort((a,b) => a.total - b.total);
 }
 function showLowStockList(){
   const old = document.getElementById('low-modal'); if(old) old.remove();
@@ -856,7 +877,7 @@ function showLowStockList(){
       <h3>🔔 ${LOW_STOCK_AT} થી ઓછો સ્ટોક</h3>
       <p class="config-note" style="margin-top:-4px">${list.length ? list.length + ' પ્રોડક્ટ ખતમ થવા પર છે.' : 'બધું ઠીક છે — કોઈ પ્રોડક્ટ ' + LOW_STOCK_AT + ' થી નીચે નથી.'}</p>
       ${list.map(x=>`<div class="stock-part">
-        <span class="sp-name">${esc(x.p.name)}</span>
+        <span class="sp-name">${esc(x.label)}</span>
         <span class="sp-qty${x.total < 0 ? ' minus' : ''}">${fmtQty(x.total)}</span>
       </div>`).join('')}
       <div class="modal-actions"><button onclick="document.getElementById('low-modal').remove()">બંધ કરો</button></div>
@@ -1211,23 +1232,31 @@ function stockLineHtml(p){
   const disc = isDiscontinued(p.id);
   const partDisc = !disc && rows.some(v => v.is_discontinued);
   const low = !disc && total !== null && total < LOW_STOCK_AT && total >= 0;
+  // Family me andar ke variant alag se dekho: CDSA ka total 36,000 ho to bhi
+  // CDSA STRIP ke 3 par chetavni chahiye.
+  const lowParts = rows.length > 1 ? rows.filter(v => !v.is_discontinued && isLowQty(num(v.current_stock) || 0)) : [];
   // Ek hi item ho par minus/band me ho, to bhi breakdown dikhao — warna
   // number akela dikhega aur pata nahi chalega kyun aisa hai.
   const showParts = rows.length > 1 || neg || partDisc || ghosts.length > 0;
   const sub = rows.length > 1 ? `${rows.length} item ▾` : (neg ? 'માઇનસ ▾' : 'Vyapar');
-  const cls = disc ? 'disc' : (neg ? 'neg' : (low ? 'low' : (total > 0 ? '' : 'zero')));
+  const cls = disc ? 'disc' : (neg ? 'neg' : ((low || lowParts.length) ? 'low' : (total > 0 ? '' : 'zero')));
   return `<div class="stock-line ${cls}" onclick="toggleStockParts(${p.id})">
-      <span class="lbl-icon">${disc ? '⛔' : (low ? '⚠️' : '📊')}</span>
+      <span class="lbl-icon">${disc ? '⛔' : ((low || lowParts.length) ? '⚠️' : '📊')}</span>
       <span class="st-qty">${fmtQty(total)}</span>
       <span style="font-size:12px; color:var(--ink-soft)">stock</span>
-      ${disc ? '<span class="st-tag">DISCONTINUED</span>' : (low ? '<span class="st-tag">ઓછો સ્ટોક</span>' : '')}
+      ${disc ? '<span class="st-tag">DISCONTINUED</span>'
+             : (low ? '<span class="st-tag">ઓછો સ્ટોક</span>'
+             : (lowParts.length ? `<span class="st-tag">${lowParts.length} item ઓછો</span>` : ''))}
       <span class="st-sub">${sub}</span>
     </div>
     ${showParts ? `<div class="stock-parts" id="stockparts_${p.id}" style="display:none">
-      ${rows.map(v=>`<div class="stock-part${v.is_discontinued ? ' off' : ''}">
-          <span class="sp-name">${esc(v.item_name)}${v.is_discontinued ? '<span class="sp-tag">Discontinued' + (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '') + '</span>' : ''}</span>
-          <span class="sp-qty${(num(v.current_stock) || 0) < 0 ? ' minus' : ''}">${fmtQty(v.current_stock)}</span>
-        </div>`).join('')}
+      ${rows.map(v=>{
+        const q = num(v.current_stock) || 0;
+        const lowV = rows.length > 1 && !v.is_discontinued && isLowQty(q) && q >= 0;
+        return `<div class="stock-part${v.is_discontinued ? ' off' : ''}${lowV ? ' lowpart' : ''}">
+          <span class="sp-name">${esc(v.item_name)}${v.is_discontinued ? '<span class="sp-tag">Discontinued' + (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '') + '</span>' : (lowV ? '<span class="sp-tag">ઓછો સ્ટોક</span>' : '')}</span>
+          <span class="sp-qty${q < 0 ? ' minus' : (lowV ? ' lowq' : '')}">${fmtQty(v.current_stock)}</span>
+        </div>`; }).join('')}
       ${ghosts.map(v=>`<div class="stock-part off">
           <span class="sp-name">${esc(v.item_name)}<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span></span>
           <span class="sp-qty">${fmtQty(v.current_stock)}</span>
