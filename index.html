@@ -422,6 +422,7 @@ a{color:var(--maroon);}
   .edit-row .er-actions button{min-height:38px; padding:7px 15px; font-size:13px;}
   .er-second{display:flex; gap:14px; align-items:flex-start; margin-top:10px;}
   .er-second .field{flex:1 1 320px; margin-bottom:0;}
+  .er-second .disc-check{flex:1 1 260px; align-self:flex-end; padding-bottom:10px;}
   .er-second #img-picker{flex:1 1 320px;}
 
   /* The two big single-column panels stay readable, not stretched. */
@@ -562,6 +563,11 @@ a{color:var(--maroon);}
 :root[data-theme="dark"] .stock-part.lowpart{background:#3A2A0E;}
 .sp-qty.lowq{color:#B45309;}
 :root[data-theme="dark"] .sp-qty.lowq{color:#FBBF24;}
+.disc-check{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; cursor:pointer;
+  font-weight:700; font-size:13.5px; color:var(--danger); margin:8px 0 4px;
+}
+.disc-check input{width:18px; height:18px; margin:0; accent-color:var(--danger);}
 .stock-line.disc{background:var(--paper-dark); border-color:var(--rule); opacity:.8;}
 .stock-line.disc .st-qty{color:var(--ink-soft); text-decoration:line-through;}
 .st-tag{
@@ -788,10 +794,10 @@ async function loadVyapar(force){
   // chalte hain. Band item tabhi saamne aata hai jab uska stock 0 se zyada
   // ho — wo maal shelf par pada hai, dikhna chahiye, bas ginti me nahi.
   vyaparCache = vi.data || [];
-  // Discontinued do jagah se aata hai: Vyapar ki list (roz sync hoti hai) ya
-  // app me haath se lagaya hua flag (sync use kabhi nahi chhuta). Dono ko ek
-  // hi jhande me mila do, aage sab code bas .is_discontinued dekhe.
-  vyaparCache.forEach(v => { v.is_discontinued = !!(v.is_discontinued || v.discontinued_manual); });
+  // Discontinued sirf wahi jo aapne app me haath se lagaya (discontinued_manual).
+  // Vyapar ki discontinue list ab nahi padhte — user ne kaha discontinue wo
+  // khud sambhalenge, sync sirf stock laata hai. Aage sab code .is_discontinued dekhe.
+  vyaparCache.forEach(v => { v.is_discontinued = !!v.discontinued_manual; });
   vyaparLive  = vyaparCache.filter(v => v.is_active !== false);
   linksCache  = li.data || [];
   vyaparIndex = {};
@@ -1676,6 +1682,10 @@ function productFormHtml(editing){
       <div class="field"><label>Note</label>
         <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="મરજિયાત" style="width:100%"></div>
       <div id="img-picker"></div>
+      ${editing ? (vyaparRowsFor(editing.id, true).length
+        ? `<label class="disc-check"><input type="checkbox" id="p_disc" class="calc-safe" ${isDiscontinued(editing.id) ? 'checked' : ''}>
+             ⛔ Discontinued <span class="config-note" style="margin:0">— Vyapar ના જોડાયેલા ${vyaparRowsFor(editing.id, true).length} item પર લાગશે</span></label>`
+        : `<p class="config-note" style="margin:0">⛔ Discontinue કરવા પહેલાં Vyapar Stock માં આ પ્રોડક્ટ જોડો.</p>`) : ''}
     </div>`;
 }
 function paintProductsList(){
@@ -1766,6 +1776,17 @@ async function saveProduct(){
     if(rows.length){
       const {error} = await sb.from('pbs_boxes').insert(rows);
       if(error){ toast(friendlyDbError(error), 'error'); return; }
+    }
+    // Product-level Discontinued checkbox → us product ke saare jude Vyapar
+    // item par manual flag. Vyapar Stock tab ka ⛔ item-wise hai; ye poora ek saath.
+    const discBox = document.getElementById('p_disc');
+    if(editingProductId && discBox){
+      const names = vyaparRowsFor(editingProductId, true).map(v => v.item_name);
+      if(names.length){
+        const {error:dErr} = await sb.from('pbs_vyapar_items').update({discontinued_manual: discBox.checked}).in('item_name', names);
+        if(dErr){ toast(friendlyDbError(dErr), 'error'); return; }
+        await loadVyapar(true);
+      }
     }
     toast(editingProductId ? 'પ્રોડક્ટ અપડેટ થઈ ગઈ.' : 'પ્રોડક્ટ ઉમેરાઈ ગઈ.');
     editingProductId = null; boxDraft = []; imageDraft = null;
@@ -1982,25 +2003,21 @@ function paintVyaparList(){
               <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
             </div>
             ${hit.map(x=>`<div class="stock-part${x.is_discontinued ? ' off' : ''}" style="padding-left:14px">
-              <span class="sp-name">${esc(x.item_name)}${x.is_discontinued
-                ? '<span class="sp-tag">Discontinued' + (x.discontinued_manual ? ' · એપમાં લગાવેલું' : (x.phase_out_date ? ' · ' + esc(x.phase_out_date) : '')) + '</span>' : ''}</span>
+              <span class="sp-name">${esc(x.item_name)}${x.is_discontinued ? '<span class="sp-tag">Discontinued</span>' : ''}</span>
               <span class="sp-qty${(num(x.current_stock)||0) < 0 ? ' minus' : ''}">${fmtQty(x.current_stock)}</span>
-              <button class="sp-x" title="${x.discontinued_manual ? 'Discontinue હટાવો' : 'Discontinue લગાવો'}"
-                onclick="toggleManualDisc(${JSON.stringify(x.item_name).replace(/"/g,'&quot;')}, ${x.discontinued_manual ? 'false' : 'true'})"
-                ${x.is_discontinued && !x.discontinued_manual ? 'disabled style="opacity:.35"' : ''}>${x.discontinued_manual ? '↩️' : '⛔'}</button>
+              <button class="sp-x" title="${x.is_discontinued ? 'Discontinue હટાવો' : 'Discontinue લગાવો'}"
+                onclick="toggleManualDisc(${JSON.stringify(x.item_name).replace(/"/g,'&quot;')}, ${x.is_discontinued ? 'false' : 'true'})">${x.is_discontinued ? '↩️' : '⛔'}</button>
             </div>`).join('')}`;
           }
           // v nahi mila = ya to Vyapar me band ho gaya, ya naam hi hata diya.
           // Dono me ye link ab kisi kaam ka nahi — dikhao taaki ✕ se hata sakein.
           const notLive = !v || v.is_active === false;
-          const discTag = v && v.is_discontinued
-            ? '<span class="sp-tag">Discontinued' + (v.discontinued_manual ? ' · એપમાં લગાવેલું' : (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '')) + '</span>' : '';
+          const discTag = v && v.is_discontinued ? '<span class="sp-tag">Discontinued</span>' : '';
           return `<div class="stock-part${(notLive || (v && v.is_discontinued)) ? ' off' : ''}">
             <span class="sp-name">${esc(l.pattern)}${
               notLive ? '<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span>' : discTag}</span>
-            ${v && !notLive ? `<button class="sp-x" title="${v.discontinued_manual ? 'Discontinue હટાવો' : 'Discontinue લગાવો'}"
-               onclick="toggleManualDisc(${JSON.stringify(v.item_name).replace(/"/g,'&quot;')}, ${v.discontinued_manual ? 'false' : 'true'})"
-               ${v.is_discontinued && !v.discontinued_manual ? 'disabled style="opacity:.35"' : ''}>${v.discontinued_manual ? '↩️' : '⛔'}</button>` : ''}
+            ${v ? `<button class="sp-x" title="${v.is_discontinued ? 'Discontinue હટાવો' : 'Discontinue લગાવો'}"
+               onclick="toggleManualDisc(${JSON.stringify(v.item_name).replace(/"/g,'&quot;')}, ${v.is_discontinued ? 'false' : 'true'})">${v.is_discontinued ? '↩️' : '⛔'}</button>` : ''}
             <span class="sp-qty${v && (num(v.current_stock)||0) < 0 ? ' minus' : ''}">${v ? fmtQty(v.current_stock) : ''}</span>
             <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
           </div>`;

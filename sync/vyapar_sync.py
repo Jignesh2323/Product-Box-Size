@@ -54,12 +54,13 @@ def main():
     payload, seen = [], set()
     for name, stock, active, phase in rows:
         seen.add(name)
+        # Sirf stock aur live/band. Discontinue is script ka kaam nahi —
+        # wo user app me haath se lagata hai (discontinued_manual), aur is
+        # payload me na hone se upsert use chhuta bhi nahi.
         payload.append({
             "item_name": name,
             "current_stock": stock,
             "is_active": bool(active),
-            "is_discontinued": phase is not None,
-            "phase_out_date": phase,
             "synced_at": now,
         })
     for i in range(0, len(payload), 200):
@@ -74,15 +75,10 @@ def main():
 
     changed = sum(1 for p in payload if p["item_name"] not in before
                   or before[p["item_name"]]["current_stock"] != p["current_stock"])
-    newly_disc = [p["item_name"] for p in payload
-                  if p["is_discontinued"] and p["item_name"] in before
-                  and not before[p["item_name"]]["is_discontinued"]]
     live = sum(1 for p in payload if p["is_active"])
 
     print(f"SYNC OK {now}")
     print(f"  rows: {len(payload)} | live: {live} | stock badla: {changed} | Vyapar se gaayab: {len(gone)}")
-    if newly_disc:
-        print("  naye discontinued: " + ", ".join(newly_disc))
     if gone:
         print("  ab live nahi: " + ", ".join(gone[:20]))
 
