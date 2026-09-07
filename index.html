@@ -916,7 +916,11 @@ function lowStockProducts(){
       });
     }
   });
-  return out.sort((a,b) => (a.disc - b.disc) || (a.total - b.total));
+  // Discontinued aur stock 0 (ya minus) — do baar kehne ki baat nahi: band
+  // bhi hai aur kuch bacha bhi nahi, to bell me kyun. Discontinued sirf tab
+  // dikhe jab thoda-bahut maal abhi pada ho.
+  return out.filter(x => !x.disc || x.total > 0)
+            .sort((a,b) => (a.disc - b.disc) || (a.total - b.total));
 }
 function showLowStockList(){
   const old = document.getElementById('low-modal'); if(old) old.remove();
