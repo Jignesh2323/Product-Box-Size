@@ -347,21 +347,45 @@ a{color:var(--maroon);}
   }
   .hero-banner h1{font-size:25px;}
 
-  /* Results become a wall of cards instead of one long column. */
-  #search-results, #products-list{
+  /* Search results become a wall of cards instead of one long column. */
+  #search-results{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(390px,1fr));
     gap:14px; align-items:start;
   }
   /* Ek card ke saare spec ek hi line me — do-teen alag alag dabbe wrap hokar
      neeche nahi jaate. auto-flow column isliye ki spec kitne bhi hon (Note ke
      saath ya bina), sab ek row me barabar baant jaate hain. */
-  #search-results .spec-grid, #products-list .spec-grid{
+  #search-results .spec-grid{
     grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr);
   }
-  #search-results .spec .v, #products-list .spec .v{font-size:14px;}
-  #search-results > .result-count, #products-list > .result-count,
-  #search-results > .card:only-child, #products-list > .card:only-child{grid-column:1/-1;}
-  #search-results > .card, #products-list > .card{margin-bottom:0;}
+  #search-results .spec .v{font-size:14px;}
+  #search-results > .result-count, #search-results > .card:only-child{grid-column:1/-1;}
+  #search-results > .card{margin-bottom:0;}
+
+  /* ---- Products: ek row me ek product ----
+     Photo → naam → unit weight → item dimension → item box dimension → box.
+     Card ko grid ki tarah tukdon me baantne ke bajaye poori chaudai ki ek
+     line bana diya, taaki aankh ek hi patti par baaein se daaein chale.
+     Jis product ke kai box hain unke box aakhri khaane me neeche neeche
+     lagte hain — us product ki row utni hi oonchi ho jaati hai, list ka
+     baaki dhaancha waisa hi rehta hai. */
+  #products-list .prod-card{
+    display:flex; align-items:center; gap:16px;
+    padding:12px 16px; margin-bottom:10px;
+  }
+  #products-list .prod-card h3{
+    flex:0 0 250px; margin:0; font-size:15.5px; gap:10px;
+  }
+  #products-list .spec-grid{display:flex; gap:8px; margin:0; flex:0 0 auto;}
+  #products-list .spec{flex:0 0 150px; width:150px;}
+  #products-list .spec .v{font-size:14px;}
+  #products-list .box-col{flex:1 1 240px; min-width:240px;}
+  /* Box ki patti ko 430px par rok do, warna "14.24 kg" khisak kar row ke
+     doosre chhor par chala jaata hai aur beech me khaali maidan reh jaata. */
+  #products-list .box-line, #products-list .stock-line{margin:0; max-width:430px;}
+  #products-list .box-line + .box-line, #products-list .stock-line{margin-top:6px;}
+  #products-list .stock-parts{margin-top:6px; max-width:430px;}
+  #products-list .prod-actions{margin:0 0 0 auto; flex:0 0 auto;}
 
   /* Ek 1900px screen par form ke input 1800px chaude ho jaate the — ek naam
      ke liye aadha kamra. Form ko padhne layak chaudai par rok do; andar ke
@@ -914,16 +938,18 @@ function productCardHtml(p, opts){
         specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
       ${p.notes ? specHtml('Note', p.notes) : ''}
     </div>
-    ${boxes.length ? boxes.map((b,i)=>`<div class="box-line">
-        ${boxes.length > 1 ? `<span class="box-index">${i+1}</span>` : '<span class="lbl-icon">📦</span>'}
-        <span class="bx-dim">${b.box_dimension ? esc(b.box_dimension) : '—'}</span>
-        <span class="bx-sep">×</span>
-        <span class="bx-units">${b.unit_in_box == null ? '—' : esc(b.unit_in_box)} unit</span>
-        <span class="bx-wt">${kg(boxWeight(p,b)) || '—'}</span>
-      </div>`).join('')
-      : `<div class="box-line"><span class="lbl-icon">📦</span><span class="bx-dim">—</span>
-         <span class="bx-sep">box detail baaki hai</span></div>`}
-    ${opts.stock ? stockLineHtml(p) : ''}
+    <div class="box-col">
+      ${boxes.length ? boxes.map((b,i)=>`<div class="box-line">
+          ${boxes.length > 1 ? `<span class="box-index">${i+1}</span>` : '<span class="lbl-icon">📦</span>'}
+          <span class="bx-dim">${b.box_dimension ? esc(b.box_dimension) : '—'}</span>
+          <span class="bx-sep">×</span>
+          <span class="bx-units">${b.unit_in_box == null ? '—' : esc(b.unit_in_box)} unit</span>
+          <span class="bx-wt">${kg(boxWeight(p,b)) || '—'}</span>
+        </div>`).join('')
+        : `<div class="box-line"><span class="lbl-icon">📦</span><span class="bx-dim">—</span>
+           <span class="bx-sep">box detail baaki hai</span></div>`}
+      ${opts.stock ? stockLineHtml(p) : ''}
+    </div>
     ${opts.editable ? `<div class="prod-actions">
         <button onclick="editProduct(${p.id})">✏️ Edit</button>
         <button class="danger" onclick="deleteProduct(${p.id})">🗑️</button>
