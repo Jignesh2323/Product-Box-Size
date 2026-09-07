@@ -400,11 +400,29 @@ a{color:var(--maroon);}
      form-row apne aap teen-teen field ek line me le aate hain. */
   .sticky-search{top:78px;}   /* upar wali fixed nav ke neeche */
 
-  .accordion-body, #products-list .edit-inline{max-width:1040px;}
-  .accordion-body input, .accordion-body select, .accordion-body textarea,
-  #products-list .edit-inline input{max-width:100%;}
-  /* Naam ko baaki teen field se zyada jagah, jaise card ki row me hota hai. */
-  .form-main .field-name{flex:2 1 220px;}
+  .accordion-body{max-width:1040px;}
+  .accordion-body input, .accordion-body select, .accordion-body textarea{max-width:100%;}
+
+  /* Edit karte waqt row apni jagah aur apni shakl dono rakhti hai: wahi
+     khaane, wahi chaudai, bas text ki jagah input. Isliye yahan bilkul wahi
+     flex anupaat hain jo #products-list .prod-card me hain. */
+  .edit-row{display:flex; align-items:flex-start; gap:12px;}
+  .edit-row .er-thumb{flex:0 0 auto; margin:18px 0 0;}
+  .edit-row .field{margin-bottom:0;}
+  .edit-row .er-name{flex:1 1 170px; min-width:130px;}
+  .edit-row .er-specs{display:flex; gap:6px; flex:2 1 290px; min-width:0;}
+  .edit-row .er-specs .field{flex:1 1 0; min-width:0;}
+  .edit-row .er-boxes{flex:2 1 320px; min-width:0;}
+  .edit-row .er-boxes .box-editor-row{margin-bottom:6px;}
+  .edit-row .er-boxes .field{min-width:88px;}
+  .edit-row .er-addbox{width:100%; min-height:36px; padding:6px 10px; font-size:12.5px;}
+  .edit-row .er-actions{
+    flex:0 0 auto; display:flex; gap:8px; margin:18px 0 0 auto;
+  }
+  .edit-row .er-actions button{min-height:38px; padding:7px 15px; font-size:13px;}
+  .er-second{display:flex; gap:14px; align-items:flex-start; margin-top:10px;}
+  .er-second .field{flex:1 1 320px; margin-bottom:0;}
+  .er-second #img-picker{flex:1 1 320px;}
 
   /* The two big single-column panels stay readable, not stretched. */
   .segmented{max-width:560px; margin-left:auto; margin-right:auto;}
@@ -1362,32 +1380,39 @@ async function renderProductsTab(box){
 /* Ek hi form do jagah kaam aata hai: upar "Add Product" me, aur Edit dabane
    par usi product ki apni row me. Isliye markup ek hi jagah likha hai. */
 function productFormHtml(editing){
+  // Row hi row rehti hai — Edit dabane par wahi patti input me badal jaati
+  // hai, koi alag popup nahi khulta. Khaane wahi aur usi kram me hain jo
+  // dekhne waali row me the: photo, naam, unit weight, item dimension,
+  // item box dimension, box. Note aur photo badalna neeche chhoti line me,
+  // taaki upar wali line row jaisi hi patli rahe.
   return `
-    <!-- Card ki row jaisa hi kram: naam → unit weight → item dimension →
-         item box dimension. PC par ye chaaron ek hi line me aate hain. -->
-    <div class="form-row form-main">
-      <div class="field field-name"><label>Product Name *</label>
+    <div class="edit-row">
+      ${editing && editing.image_url
+        ? `<img class="prod-thumb er-thumb" src="${esc(editing.image_url)}" alt="">` : ''}
+      <div class="field er-name"><label>Product Name *</label>
         <input id="p_name" value="${esc(editing?editing.name:'')}" placeholder="e.g. Door Chime" style="width:100%"></div>
-      <div class="field"><label>Unit Weight (kg)</label>
-        <input id="p_uw" type="number" step="0.001" inputmode="decimal"
-               value="${editing&&editing.unit_weight!=null?editing.unit_weight:''}"></div>
-      <div class="field"><label>Item Dimension</label>
-        <input id="p_idim" value="${esc(editing?(editing.item_dimension||''):'')}" placeholder="19.5x11x2.5"></div>
-      <div class="field"><label>Item Box Dimension</label>
-        <input id="p_ibdim" value="${esc(editing?(editing.item_box_dimension||''):'')}" placeholder="8x5x2.5"></div>
+      <div class="er-specs">
+        <div class="field"><label>Unit Weight (kg)</label>
+          <input id="p_uw" type="number" step="0.001" inputmode="decimal"
+                 value="${editing&&editing.unit_weight!=null?editing.unit_weight:''}"></div>
+        <div class="field"><label>Item Dimension</label>
+          <input id="p_idim" value="${esc(editing?(editing.item_dimension||''):'')}" placeholder="19.5x11x2.5"></div>
+        <div class="field"><label>Item Box Dimension</label>
+          <input id="p_ibdim" value="${esc(editing?(editing.item_box_dimension||''):'')}" placeholder="8x5x2.5"></div>
+      </div>
+      <div class="er-boxes">
+        <div id="box-editor"></div>
+        <button onclick="addBoxDraftRow()" class="er-addbox">➕ Ek aur Box Size</button>
+      </div>
+      <div class="er-actions">
+        <button class="primary" onclick="saveProduct()">${editing?'Save':'Add Product'}</button>
+        ${editing ? '<button onclick="resetProductForm()">Cancel</button>' : ''}
+      </div>
     </div>
-    <div class="field"><label>Note</label>
-      <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="optional" style="width:100%"></div>
-
-    <div id="img-picker"></div>
-
-    <label style="margin-top:6px">Box Sizes (ek product ke kai box ho sakte hain)</label>
-    <div id="box-editor"></div>
-    <button onclick="addBoxDraftRow()" style="width:100%; margin-top:2px;">➕ Ek aur Box Size</button>
-
-    <div class="modal-actions">
-      ${editing ? '<button onclick="resetProductForm()">Cancel</button>' : ''}
-      <button class="primary" onclick="saveProduct()">${editing?'Save Changes':'Add Product'}</button>
+    <div class="er-second">
+      <div class="field"><label>Note</label>
+        <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="optional" style="width:100%"></div>
+      <div id="img-picker"></div>
     </div>`;
 }
 function paintProductsList(){
