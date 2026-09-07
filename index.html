@@ -553,6 +553,33 @@ a{color:var(--maroon);}
 .sp-qty.minus, .stock-line.neg .st-qty{color:var(--danger) !important;}
 .stock-line.neg{background:#FEF2F2; border-color:#FECACA;}
 :root[data-theme="dark"] .stock-line.neg{background:#3A1414; border-color:#7A3838;}
+/* Kam stock (10 se neeche): amber. Discontinued: slate, kata hua sa. */
+.stock-line.low{background:#FFFBEB; border-color:#FDE68A;}
+.stock-line.low .st-qty{color:#B45309;}
+:root[data-theme="dark"] .stock-line.low{background:#3A2A0E; border-color:#7A5A1A;}
+:root[data-theme="dark"] .stock-line.low .st-qty{color:#FBBF24;}
+.stock-line.disc{background:var(--paper-dark); border-color:var(--rule); opacity:.8;}
+.stock-line.disc .st-qty{color:var(--ink-soft); text-decoration:line-through;}
+.st-tag{
+  font-size:10px; font-weight:800; letter-spacing:.08em; padding:2px 7px; border-radius:6px;
+  background:rgba(180,83,9,.12); color:#B45309;
+}
+.stock-line.disc .st-tag{background:rgba(20,22,43,.08); color:var(--ink-soft);}
+:root[data-theme="dark"] .stock-line.disc .st-tag{background:rgba(255,255,255,.08);}
+/* Hero me bell: kitne product 10 se neeche */
+.bell{
+  position:relative; z-index:1; margin-left:auto; flex:0 0 auto;
+  width:42px; height:42px; border-radius:12px; padding:0; font-size:19px;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); color:#fff; box-shadow:none;
+}
+.bell.on{background:#fff; border-color:#fff;}
+.bell-n{
+  position:absolute; top:-6px; right:-6px; min-width:20px; height:20px; padding:0 5px;
+  border-radius:10px; background:var(--danger); color:#fff; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; border:2px solid #4F46E5;
+}
+.hero-banner .title-block{margin-right:8px;}
+@media print{ .bell{display:none;} }
 .link-row{
   display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   padding:11px 13px; border-radius:var(--radius-sm); background:var(--paper-dark); margin-top:8px;
@@ -737,6 +764,7 @@ function fbaWeight(p, unitsOverride){
    CDSA-HYUNDAI, CDSA-TATA... alag alag. Stock un sabka jod hai, aur Search
    me kuch nahi badalta: wahan sirf ek CDSA hi dikhta rahega. */
 let vyaparCache = [];
+let vyaparLive = [];
 let vyaparIndex = {};
 let linksCache = [];
 let vyaparLoaded = false;
@@ -744,7 +772,7 @@ let vyaparLoaded = false;
 async function loadVyapar(force){
   if(vyaparLoaded && !force) return {};
   const [vi, li] = await Promise.all([
-    sb.from('pbs_vyapar_items').select('item_name, current_stock, is_active, synced_at').order('item_name'),
+    sb.from('pbs_vyapar_items').select('item_name, current_stock, is_active, is_discontinued, phase_out_date, synced_at').order('item_name'),
     sb.from('pbs_links').select('id, product_id, pattern, is_prefix')
   ]);
   if(vi.error) return {error: vi.error};
@@ -752,7 +780,11 @@ async function loadVyapar(force){
   // Sirf wahi item jo Vyapar me LIVE hain. Band (inactive) item yahin chhod
   // dete hain — na picker me, na breakdown me, na kisi ginti me. Vyapar khud
   // unhe list me nahi dikhata, to app bhi nahi dikhayega.
-  vyaparCache = (vi.data || []).filter(v => v.is_active !== false);
+  // Sab rakhte hain, par "live" alag: ginti, picker aur bell sirf live par
+  // chalte hain. Band item tabhi saamne aata hai jab uska stock 0 se zyada
+  // ho — wo maal shelf par pada hai, dikhna chahiye, bas ginti me nahi.
+  vyaparCache = vi.data || [];
+  vyaparLive  = vyaparCache.filter(v => v.is_active !== false);
   linksCache  = li.data || [];
   vyaparIndex = {};
   vyaparCache.forEach(v => { vyaparIndex[v.item_name.toLowerCase()] = v; });
@@ -766,7 +798,15 @@ function lastSyncedAt(){
 function linksFor(productId){ return linksCache.filter(l => l.product_id === productId); }
 /* Ek product ke peeche jitne Vyapar item hain, unki poori list.
    is_prefix wala rule naye variant apne aap pakad leta hai. */
-function vyaparRowsFor(productId){
+function vyaparRowsFor(productId, includeGhost){
+  const all = vyaparRowsAll(productId);
+  return includeGhost ? all : all.filter(v => v.is_active !== false);
+}
+/* Band par stock waale = "ghost": dikhte hain, ginte nahi. */
+function ghostRowsFor(productId){
+  return vyaparRowsAll(productId).filter(v => v.is_active === false && (num(v.current_stock) || 0) > 0);
+}
+function vyaparRowsAll(productId){
   const out = [], seen = {};
   linksFor(productId).forEach(l=>{
     if(l.is_prefix){
@@ -792,6 +832,38 @@ function stockFor(productId){
              .reduce((s,v) => s + (num(v.current_stock) || 0), 0);
 }
 function fmtQty(n){ return n === null || n === undefined ? '—' : Number(n).toLocaleString('en-IN'); }
+/* Discontinued: Vyapar ki alag list hai (phase-out date ke saath). Product
+   tab discontinued maana jaata hai jab uske SAARE live item us list me hon —
+   CDSA ka ek variant band ho to poora CDSA band nahi kehlata. */
+function isDiscontinued(productId){
+  const rows = vyaparRowsFor(productId);
+  return rows.length > 0 && rows.every(v => v.is_discontinued);
+}
+/* Kam stock: 10 se neeche (0 samet). Discontinued product isme nahi ginte —
+   jo band hi ho chuka hai uska khatam hona koi chetavni nahi. */
+const LOW_STOCK_AT = 10;
+function lowStockProducts(){
+  return productsCache
+    .map(p => ({p, total: stockFor(p.id)}))
+    .filter(x => x.total !== null && x.total < LOW_STOCK_AT && !isDiscontinued(x.p.id))
+    .sort((a,b) => a.total - b.total);
+}
+function showLowStockList(){
+  const old = document.getElementById('low-modal'); if(old) old.remove();
+  const list = lowStockProducts();
+  const box = el(`<div class="modal-backdrop" id="low-modal" onclick="if(event.target===this) this.remove()">
+    <div class="modal-box" style="max-height:80vh; overflow:auto">
+      <h3>🔔 ${LOW_STOCK_AT} થી ઓછો સ્ટોક</h3>
+      <p class="config-note" style="margin-top:-4px">${list.length ? list.length + ' પ્રોડક્ટ ખતમ થવા પર છે.' : 'બધું ઠીક છે — કોઈ પ્રોડક્ટ ' + LOW_STOCK_AT + ' થી નીચે નથી.'}</p>
+      ${list.map(x=>`<div class="stock-part">
+        <span class="sp-name">${esc(x.p.name)}</span>
+        <span class="sp-qty${x.total < 0 ? ' minus' : ''}">${fmtQty(x.total)}</span>
+      </div>`).join('')}
+      <div class="modal-actions"><button onclick="document.getElementById('low-modal').remove()">બંધ કરો</button></div>
+    </div>
+  </div>`);
+  document.body.appendChild(box);
+}
 
 function friendlyDbError(error){
   if(!error) return '';
@@ -1106,10 +1178,28 @@ function productCardHtml(p, opts){
 }
 function stockLineHtml(p){
   const rows = vyaparRowsFor(p.id);
+  const ghosts = ghostRowsFor(p.id);
   if(!rows.length){
-    // Link hai par ek bhi item live nahi (jaise 4 Pcs Pet Groom Kit band ho
-    // gaya) — ye "joda nahi" se alag baat hai, alag hi likho.
     const dead = linksFor(p.id).length > 0;
+    // Link hai, live item nahi, par band item par stock pada hai — wo number
+    // dikhao, tag ke saath. (4 Pcs Pet Groom Kit: band, phir bhi 2 shelf par.)
+    if(dead && ghosts.length){
+      const g = ghosts.reduce((s,v)=>s+(num(v.current_stock)||0),0);
+      return `<div class="stock-line disc" onclick="toggleStockParts(${p.id})">
+        <span class="lbl-icon">⛔</span>
+        <span class="st-qty" style="text-decoration:none">${fmtQty(g)}</span>
+        <span style="font-size:12px; color:var(--ink-soft)">stock</span>
+        <span class="st-tag">Vyapar માં હવે લાઇવ નથી</span>
+        <span class="st-sub">${ghosts.length} item ▾</span>
+      </div>
+      <div class="stock-parts" id="stockparts_${p.id}" style="display:none">
+        ${ghosts.map(v=>`<div class="stock-part off">
+          <span class="sp-name">${esc(v.item_name)}<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span></span>
+          <span class="sp-qty">${fmtQty(v.current_stock)}</span></div>`).join('')}
+      </div>`;
+    }
+    // Link hai par ek bhi item live nahi aur stock bhi nahi — ye "joda nahi"
+    // se alag baat hai, alag hi likho.
     return `<div class="stock-line zero" onclick="setTab('vyapar')">
       <span class="lbl-icon">${dead ? '⛔' : '🔗'}</span>
       <span class="st-qty">${dead ? 'Vyapar માં હવે લાઇવ નથી' : 'Vyapar સાથે જોડાયેલી નથી'}</span>
@@ -1118,20 +1208,29 @@ function stockLineHtml(p){
   }
   const total = stockFor(p.id);
   const neg = rows.some(v => (num(v.current_stock) || 0) < 0);
-  // Ek hi item ho par minus me ho, to bhi breakdown dikhao — warna number
-  // akela dikhega aur pata nahi chalega kyun laal hai.
-  const showParts = rows.length > 1 || neg;
+  const disc = isDiscontinued(p.id);
+  const partDisc = !disc && rows.some(v => v.is_discontinued);
+  const low = !disc && total !== null && total < LOW_STOCK_AT && total >= 0;
+  // Ek hi item ho par minus/band me ho, to bhi breakdown dikhao — warna
+  // number akela dikhega aur pata nahi chalega kyun aisa hai.
+  const showParts = rows.length > 1 || neg || partDisc || ghosts.length > 0;
   const sub = rows.length > 1 ? `${rows.length} item ▾` : (neg ? 'માઇનસ ▾' : 'Vyapar');
-  return `<div class="stock-line ${total > 0 ? '' : 'zero'}${neg ? ' neg' : ''}" onclick="toggleStockParts(${p.id})">
-      <span class="lbl-icon">📊</span>
+  const cls = disc ? 'disc' : (neg ? 'neg' : (low ? 'low' : (total > 0 ? '' : 'zero')));
+  return `<div class="stock-line ${cls}" onclick="toggleStockParts(${p.id})">
+      <span class="lbl-icon">${disc ? '⛔' : (low ? '⚠️' : '📊')}</span>
       <span class="st-qty">${fmtQty(total)}</span>
       <span style="font-size:12px; color:var(--ink-soft)">stock</span>
+      ${disc ? '<span class="st-tag">DISCONTINUED</span>' : (low ? '<span class="st-tag">ઓછો સ્ટોક</span>' : '')}
       <span class="st-sub">${sub}</span>
     </div>
     ${showParts ? `<div class="stock-parts" id="stockparts_${p.id}" style="display:none">
-      ${rows.map(v=>`<div class="stock-part">
-          <span class="sp-name">${esc(v.item_name)}</span>
+      ${rows.map(v=>`<div class="stock-part${v.is_discontinued ? ' off' : ''}">
+          <span class="sp-name">${esc(v.item_name)}${v.is_discontinued ? '<span class="sp-tag">Discontinued' + (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '') + '</span>' : ''}</span>
           <span class="sp-qty${(num(v.current_stock) || 0) < 0 ? ' minus' : ''}">${fmtQty(v.current_stock)}</span>
+        </div>`).join('')}
+      ${ghosts.map(v=>`<div class="stock-part off">
+          <span class="sp-name">${esc(v.item_name)}<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span></span>
+          <span class="sp-qty">${fmtQty(v.current_stock)}</span>
         </div>`).join('')}
     </div>` : ''}`;
 }
@@ -1172,6 +1271,7 @@ function topbar(){
         <h1>Product Box Size</h1>
       </span>
     </div>
+    ${vyaparLoaded ? (()=>{ const n = lowStockProducts().length; return `<button class="bell${n ? ' on' : ''}" onclick="showLowStockList()" title="${LOW_STOCK_AT} થી ઓછો સ્ટોક">🔔${n ? `<span class="bell-n">${n}</span>` : ''}</button>`; })() : ''}
     ${REQUIRE_PIN ? `<div class="who">
       <span class="pill ${on?'sold':'unsold'}">${on?'Unlocked':'View Only'}</span>
       ${on ? '<button onclick="lockNow()">Lock</button>' : '<button class="primary" onclick="unlockOnly()">Unlock</button>'}
@@ -1182,6 +1282,9 @@ async function render(){
   if(HIDDEN_TAB_KEYS.includes(state.tab) && !NO_PIN_MORE_TABS.includes(state.tab) && !unlocked()){
     state.tab = 'search';
   }
+  // Bell ke liye stock har tab par chahiye — pehli baar fetch, phir cache.
+  if(!productsCache.length) await loadProducts();
+  await loadVyapar();
   const primary = TABS.filter(([k])=> !HIDDEN_TAB_KEYS.includes(k));
   const secondary = TABS.filter(([k])=> HIDDEN_TAB_KEYS.includes(k));
   const onSecondary = HIDDEN_TAB_KEYS.includes(state.tab);
@@ -1763,7 +1866,7 @@ async function renderVyaparTab(box){
         <div class="stat stat-good"><div class="num">${linked}</div><div class="lbl">જોડાઈ ગઈ</div></div>
         <div class="stat ${productsCache.length-linked ? 'stat-bad' : 'stat-neutral'}">
           <div class="num">${productsCache.length - linked}</div><div class="lbl">બાકી છે</div></div>
-        <div class="stat stat-info"><div class="num">${vyaparCache.length}</div><div class="lbl">લાઇવ Vyapar item</div></div>
+        <div class="stat stat-info"><div class="num">${vyaparLive.length}</div><div class="lbl">લાઇવ Vyapar item</div></div>
       </div>
       <p class="config-note" style="margin:12px 0 0">
         ${synced ? '📅 Vyapar માંથી છેલ્લે લીધેલું: <b>' + esc(synced.toLocaleString('en-IN')) + '</b>. આ હજી જાતે અપડેટ થતું નથી — AVEDIA PC થી sync જોડવાનું બાકી છે.'
@@ -1774,6 +1877,7 @@ async function renderVyaparTab(box){
       <div class="segmented">
         <button class="${vyaparFilter==='unlinked'?'on':''}" onclick="setVyaparFilter('unlinked')">બાકી</button>
         <button class="${vyaparFilter==='linked'?'on':''}"   onclick="setVyaparFilter('linked')">જોડાયેલી</button>
+        <button class="${vyaparFilter==='disc'?'on':''}"     onclick="setVyaparFilter('disc')">⛔ Discontinued</button>
         <button class="${vyaparFilter==='all'?'on':''}"      onclick="setVyaparFilter('all')">બધી</button>
       </div>
       <div class="big-search">
@@ -1799,6 +1903,9 @@ function paintVyaparList(){
     const has = linksFor(p.id).length > 0;
     if(vyaparFilter === 'linked'   && !has) return false;
     if(vyaparFilter === 'unlinked' &&  has) return false;
+    // Sirf app ke apne product me se kaun se discontinued hain — Vyapar ki
+    // poori 320 wali list nahi, wo yahan aati hi nahi.
+    if(vyaparFilter === 'disc' && !isDiscontinued(p.id)) return false;
     return !t || p.name.toLowerCase().includes(t);
   });
   if(!list.length){
@@ -1818,11 +1925,23 @@ function paintVyaparList(){
       ${rows.length ? `<div class="stock-parts">
         ${linksFor(p.id).map(l=>{
           const v = l.is_prefix ? null : vyaparIndex[String(l.pattern).toLowerCase()];
+          // Prefix rule: "CDSA" se shuru hone waale saare live item apne aap —
+          // naya variant Vyapar me bane to bhi jud jaata hai.
+          if(l.is_prefix){
+            const hit = vyaparLive.filter(x => x.item_name.toLowerCase().startsWith(String(l.pattern).toLowerCase()));
+            return `<div class="stock-part">
+              <span class="sp-name">${esc(l.pattern)}…<span class="sp-tag" style="color:var(--info)">prefix rule · ${hit.length} item આપોઆપ</span></span>
+              <span class="sp-qty">${fmtQty(hit.reduce((s,x)=>s+(num(x.current_stock)||0),0))}</span>
+              <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
+            </div>`;
+          }
           // v nahi mila = ya to Vyapar me band ho gaya, ya naam hi hata diya.
           // Dono me ye link ab kisi kaam ka nahi — dikhao taaki ✕ se hata sakein.
-          return `<div class="stock-part${v ? '' : ' off'}">
-            <span class="sp-name">${l.is_prefix ? esc(l.pattern) + '…' : esc(l.pattern)}${
-              v ? '' : '<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span>'}</span>
+          const notLive = !v || v.is_active === false;
+          return `<div class="stock-part${(notLive || (v && v.is_discontinued)) ? ' off' : ''}">
+            <span class="sp-name">${esc(l.pattern)}${
+              notLive ? '<span class="sp-tag">Vyapar માં હવે લાઇવ નથી · ગણતરીમાં નથી</span>'
+                      : (v.is_discontinued ? '<span class="sp-tag">Discontinued' + (v.phase_out_date ? ' · ' + esc(v.phase_out_date) : '') + '</span>' : '')}</span>
             <span class="sp-qty${v && (num(v.current_stock)||0) < 0 ? ' minus' : ''}">${v ? fmtQty(v.current_stock) : ''}</span>
             <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
           </div>`;
@@ -1861,7 +1980,7 @@ function paintPickerHits(){
   if(!t){ wrap.innerHTML = '<p class="config-note" style="margin:8px 0 0">Vyapar નું નામ ટાઇપ કરો.</p>'; return; }
   const taken = {};
   linksCache.forEach(l => { if(l.product_id === pickerFor) taken[String(l.pattern).toLowerCase()] = 1; });
-  const hits = vyaparCache.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
+  const hits = vyaparLive.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
   wrap.innerHTML = hits.length
     ? hits.map(v=>`<div class="link-hit" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
         <span>${markHit(v.item_name, pickerTerm.trim())}</span>
