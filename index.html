@@ -899,9 +899,13 @@ function lowStockProducts(){
       const t = num(rows[0].current_stock) || 0;
       if(isLowQty(t)) out.push({p, label: p.name, total: t, disc: pDisc});
     } else {
+      // Family ke andar ka discontinued variant (CDSA STRIP, CDSP BLACK TAPE…)
+      // card se bhi hata hai, to bell me bhi nahi — wo band hai, khatam nahi.
+      // Poora product discontinued ho to uske variant Discontinued hisse me aate hain.
       rows.forEach(v=>{
+        if(v.is_discontinued && !pDisc) return;
         const t = num(v.current_stock) || 0;
-        if(isLowQty(t)) out.push({p, label: p.name + ' → ' + v.item_name, total: t, disc: pDisc || !!v.is_discontinued});
+        if(isLowQty(t)) out.push({p, label: p.name + ' → ' + v.item_name, total: t, disc: pDisc});
       });
     }
   });
