@@ -868,7 +868,8 @@ function isDiscontinued(productId){
 function onDiscCheckChange(box){
   const want = box.checked;
   box.checked = !want;
-  withDeletePin(async ()=>{ box.checked = want; });
+  withDeletePin(async ()=>{ box.checked = want; },
+    {title: '⛔ Discontinue PIN', note: 'Discontinued બદલવા માટે PIN નાખો.', ok: 'OK'});
 }
 /* Product-level discontinue — naam se, Discontinued filter ya Edit form se. */
 async function toggleProductDisc(productId, on){
@@ -1037,25 +1038,31 @@ async function withPin(action){
    chhoda nahi jaata: yahi is gate ka poora matlab hai. */
 const DELETE_PIN = "2323";
 let deletePinInFlight = false;
-async function withDeletePin(action){
+async function withDeletePin(action, opts){
   if(deletePinInFlight) return;
   showDeletePinModal(async ()=>{
     deletePinInFlight = true;
     try{ await action(); } finally{ deletePinInFlight = false; }
-  });
+  }, opts);
 }
-function showDeletePinModal(action){
+/* Wahi PIN, alag kaam — Discontinue ke liye bhi yahi modal, par shabd uske:
+   "Delete" dikhe to lagta hai product mit raha hai. */
+function showDeletePinModal(action, opts){
+  opts = opts || {};
+  const title = opts.title || '🗑️ Delete PIN';
+  const note  = opts.note  || 'ડિલીટ કરવા માટે PIN નાખો. દર વખતે ડિલીટ પર પુછાશે.';
+  const okLbl = opts.ok    || 'Delete';
   const old = document.getElementById('del-pin-modal'); if(old) old.remove();
   const overlay = el(`<div class="modal-backdrop" id="del-pin-modal">
     <div class="modal-box">
-      <h3>🗑️ Delete PIN</h3>
-      <p class="config-note">ડિલીટ કરવા માટે PIN નાખો. દર વખતે ડિલીટ પર પુછાશે.</p>
+      <h3>${esc(title)}</h3>
+      <p class="config-note">${esc(note)}</p>
       <div id="del-pin-msg"></div>
       <input id="del-pin-input" type="password" inputmode="numeric" maxlength="6"
              style="width:100%; letter-spacing:.3em; text-align:center; font-size:20px" autofocus>
       <div class="modal-actions">
         <button onclick="document.getElementById('del-pin-modal').remove();">Cancel</button>
-        <button class="danger" id="del-pin-submit">Delete</button>
+        <button class="${opts.ok ? 'primary' : 'danger'}" id="del-pin-submit">${esc(okLbl)}</button>
       </div>
     </div>
   </div>`);
