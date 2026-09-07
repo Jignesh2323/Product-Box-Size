@@ -913,11 +913,14 @@ function showLowStockList(){
   const box = el(`<div class="modal-backdrop" id="low-modal" onclick="if(event.target===this) this.remove()">
     <div class="modal-box" style="max-height:80vh; overflow:auto">
       <h3>🔔 ${LOW_STOCK_AT} થી ઓછો સ્ટોક</h3>
-      <p class="config-note" style="margin-top:-4px">${list.length ? list.length + ' પ્રોડક્ટ ખતમ થવા પર છે.' : 'બધું ઠીક છે — કોઈ પ્રોડક્ટ ' + LOW_STOCK_AT + ' થી નીચે નથી.'}</p>
-      ${list.map(x=>`<div class="stock-part${x.disc ? ' off' : ''}">
-        <span class="sp-name">${esc(x.label)}${x.disc ? '<span class="sp-tag">⛔ Discontinued</span>' : ''}</span>
-        <span class="sp-qty${x.total < 0 ? ' minus' : ''}">${fmtQty(x.total)}</span>
-      </div>`).join('')}
+      <p class="config-note" style="margin-top:-4px">${list.length ? list.length + ' પ્રોડક્ટ ' + LOW_STOCK_AT + ' થી નીચે છે.' : 'બધું ઠીક છે — કોઈ પ્રોડક્ટ ' + LOW_STOCK_AT + ' થી નીચે નથી.'}</p>
+      ${[['live', '✅ ચાલુ (Continue)', list.filter(x=>!x.disc)], ['disc', '⛔ Discontinued', list.filter(x=>x.disc)]]
+        .map(([key, title, items]) => items.length ? `
+          <h4 style="margin:14px 0 4px; font-size:13px; letter-spacing:.04em; color:${key==='disc' ? 'var(--ink-soft)' : 'var(--danger)'}">${title} · ${items.length}</h4>
+          ${items.map(x=>`<div class="stock-part${x.disc ? ' off' : ''}">
+            <span class="sp-name">${esc(x.label)}</span>
+            <span class="sp-qty${x.total < 0 ? ' minus' : ''}">${fmtQty(x.total)}</span>
+          </div>`).join('')}` : '').join('')}
       <div class="modal-actions"><button onclick="document.getElementById('low-modal').remove()">બંધ કરો</button></div>
     </div>
   </div>`);
