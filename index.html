@@ -324,7 +324,7 @@ a{color:var(--maroon);}
    markup is untouched — only where things sit changes. */
 @media (min-width:900px){
   .bottom-nav{
-    top:0; bottom:auto; max-width:none; justify-content:center; gap:4px;
+    top:0; bottom:auto; max-width:none; width:100%; justify-content:center; gap:4px;
     padding:8px 24px; border-top:none; border-bottom:1px solid var(--rule);
     box-shadow:0 2px 14px rgba(20,22,43,.06);
   }
@@ -336,7 +336,8 @@ a{color:var(--maroon);}
   .nav-more{margin-left:8px;}
   .more-menu{top:calc(100% + 10px); bottom:auto; right:0;}
 
-  .app{max-width:1180px; padding:74px 24px 48px;}
+  /* Poori screen use karo — bade monitor par bhi dono taraf khaali patti nahi. */
+  .app{max-width:none; padding:74px 28px 48px;}
   .hero-banner{
     margin:12px 0 22px; border-radius:22px; padding:24px 28px 26px;
   }
