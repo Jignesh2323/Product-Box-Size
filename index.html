@@ -544,6 +544,15 @@ a{color:var(--maroon);}
   background:transparent; border:none; box-shadow:none; color:var(--ink-soft);
   min-height:26px; padding:2px 6px; font-size:12px;
 }
+/* Vyapar me band (inactive) item: dikhta hai, ginta nahi. Minus stock laal. */
+.stock-part.off .sp-name, .stock-part.off .sp-qty, .link-hit.off{opacity:.55;}
+.sp-tag{
+  display:block; font-size:10.5px; font-weight:600; color:var(--warning);
+  margin-top:1px; letter-spacing:.01em;
+}
+.sp-qty.minus, .stock-line.neg .st-qty{color:var(--danger) !important;}
+.stock-line.neg{background:#FEF2F2; border-color:#FECACA;}
+:root[data-theme="dark"] .stock-line.neg{background:#3A1414; border-color:#7A3838;}
 .link-row{
   display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   padding:11px 13px; border-radius:var(--radius-sm); background:var(--paper-dark); margin-top:8px;
@@ -769,10 +778,15 @@ function vyaparRowsFor(productId){
   });
   return out;
 }
+/* Total me sirf Vyapar ke ACTIVE item ginte hain. Inactive item Vyapar
+   khud apni list me chhupa deta hai — "4 Pcs Pet Groom Kit" band ho chuka
+   hai, uske 25 ko 5 Pcs waale ke saath jodna galat number deta tha. Wo
+   breakdown me phike dikhte hain, ginti me nahi aate. */
 function stockFor(productId){
   const rows = vyaparRowsFor(productId);
   if(!rows.length) return null;                       // joda hi nahi gaya — 0 mat dikhao
-  return rows.reduce((s,v) => s + (num(v.current_stock) || 0), 0);
+  return rows.filter(v => v.is_active !== false)
+             .reduce((s,v) => s + (num(v.current_stock) || 0), 0);
 }
 function fmtQty(n){ return n === null || n === undefined ? '—' : Number(n).toLocaleString('en-IN'); }
 
@@ -1097,17 +1111,29 @@ function stockLineHtml(p){
     </div>`;
   }
   const total = stockFor(p.id);
-  return `<div class="stock-line ${total > 0 ? '' : 'zero'}" onclick="toggleStockParts(${p.id})">
+  const active = rows.filter(v => v.is_active !== false);
+  const inactive = rows.length - active.length;
+  const neg = active.some(v => (num(v.current_stock) || 0) < 0);
+  // Ek hi item ho par wo inactive ya minus me ho, to bhi breakdown dikhao —
+  // warna number akela dikhega aur pata nahi chalega kyun ajeeb hai.
+  const showParts = rows.length > 1 || inactive || neg;
+  const sub = rows.length > 1
+    ? `${active.length} item${inactive ? ' · ' + inactive + ' બંધ' : ''} ▾`
+    : (inactive ? 'બંધ ▾' : (neg ? 'માઇનસ ▾' : 'Vyapar'));
+  return `<div class="stock-line ${total > 0 ? '' : 'zero'}${neg ? ' neg' : ''}" onclick="toggleStockParts(${p.id})">
       <span class="lbl-icon">📊</span>
       <span class="st-qty">${fmtQty(total)}</span>
       <span style="font-size:12px; color:var(--ink-soft)">stock</span>
-      <span class="st-sub">${rows.length > 1 ? rows.length + ' item ▾' : 'Vyapar'}</span>
+      <span class="st-sub">${sub}</span>
     </div>
-    ${rows.length > 1 ? `<div class="stock-parts" id="stockparts_${p.id}" style="display:none">
-      ${rows.map(v=>`<div class="stock-part">
-        <span class="sp-name">${esc(v.item_name)}</span>
-        <span class="sp-qty">${fmtQty(v.current_stock)}</span>
-      </div>`).join('')}
+    ${showParts ? `<div class="stock-parts" id="stockparts_${p.id}" style="display:none">
+      ${rows.map(v=>{
+        const off = v.is_active === false, minus = (num(v.current_stock) || 0) < 0;
+        return `<div class="stock-part${off ? ' off' : ''}">
+          <span class="sp-name">${esc(v.item_name)}${off ? '<span class="sp-tag">Vyapar માં બંધ · ગણતરીમાં નથી</span>' : ''}</span>
+          <span class="sp-qty${minus ? ' minus' : ''}">${fmtQty(v.current_stock)}</span>
+        </div>`;
+      }).join('')}
     </div>` : ''}`;
 }
 function toggleStockParts(id){
@@ -1793,10 +1819,12 @@ function paintVyaparList(){
       ${rows.length ? `<div class="stock-parts">
         ${linksFor(p.id).map(l=>{
           const v = l.is_prefix ? null : vyaparIndex[String(l.pattern).toLowerCase()];
-          return `<div class="stock-part">
+          const off = v && v.is_active === false;
+          return `<div class="stock-part${off ? ' off' : ''}">
             <span class="sp-name">${l.is_prefix ? esc(l.pattern) + '…' : esc(l.pattern)}${
-              v ? '' : '<span class="mx-sub">Vyapar માં આ નામ હવે નથી</span>'}</span>
-            <span class="sp-qty">${v ? fmtQty(v.current_stock) : ''}</span>
+              v ? (off ? '<span class="sp-tag">Vyapar માં બંધ · ગણતરીમાં નથી</span>' : '')
+                : '<span class="mx-sub">Vyapar માં આ નામ હવે નથી</span>'}</span>
+            <span class="sp-qty${v && (num(v.current_stock)||0) < 0 ? ' minus' : ''}">${v ? fmtQty(v.current_stock) : ''}</span>
             <button class="sp-x" onclick="removeLink(${l.id})">✕</button>
           </div>`;
         }).join('')}
@@ -1836,8 +1864,8 @@ function paintPickerHits(){
   linksCache.forEach(l => { if(l.product_id === pickerFor) taken[String(l.pattern).toLowerCase()] = 1; });
   const hits = vyaparCache.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
   wrap.innerHTML = hits.length
-    ? hits.map(v=>`<div class="link-hit" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
-        <span>${markHit(v.item_name, pickerTerm.trim())}</span>
+    ? hits.map(v=>`<div class="link-hit${v.is_active === false ? ' off' : ''}" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
+        <span>${markHit(v.item_name, pickerTerm.trim())}${v.is_active === false ? '<span class="sp-tag">Vyapar માં બંધ</span>' : ''}</span>
         <span class="lh-qty">${fmtQty(v.current_stock)}</span>
       </div>`).join('')
     : `<p class="empty" style="text-align:center">"${esc(pickerTerm)}" Vyapar માં મળ્યું નથી.</p>`;
