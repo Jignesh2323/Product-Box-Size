@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Box Size</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4F46E5">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Box Size">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ============================================================
+   DESIGN SYSTEM — clean, flat, mobile-first. Same class names
+   as before throughout the JS, only the visual language changed,
+   so no markup/logic had to move.
+   Palette: cool light surface, indigo primary, soft tinted
+   status chips (green/red/amber/blue) instead of ledger colors.
+   Type: Space Grotesk (headings) + Inter (UI/body) + IBM Plex
+   Mono (money, vehicle numbers, dates — anything tabular).
+   ============================================================ */
+:root{
+  --paper:#F3F4F8;
+  --paper-dark:#E9EBF3;
+  --ink:#14162B;
+  --ink-soft:#6B7280;
+  --maroon:#4F46E5;
+  --maroon-dark:#3D34C9;
+  --ledger-green:#16A34A;
+  --rule:#E4E6EF;
+  --white-card:#FFFFFF;
+  --danger:#DC2626;
+  --warning:#B45309;
+  --info:#0369A1;
+  --maroon-glow:rgba(79,70,229,.28);
+  --radius:18px;
+  --radius-sm:12px;
+  --shadow:0 1px 2px rgba(20,22,43,.04), 0 8px 24px rgba(20,22,43,.07);
+  --shadow-lg:0 4px 10px rgba(20,22,43,.08), 0 16px 40px rgba(20,22,43,.14);
+  --nav-h:64px;
+}
+:root[data-theme="dark"]{
+  --paper:#12131C;
+  --paper-dark:#1E2030;
+  --ink:#ECEDF7;
+  --ink-soft:#9AA0B8;
+  --maroon:#8B85FF;
+  --maroon-dark:#A5A0FF;
+  --ledger-green:#34D399;
+  --rule:#2E3145;
+  --white-card:#1A1C2A;
+  --danger:#F87171;
+  --warning:#FBBF24;
+  --info:#38BDF8;
+  --maroon-glow:rgba(139,133,255,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --shadow-lg:0 4px 10px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.5);
+}
+:root[data-theme="dark"] .stat-good{background:#0F2E22;}
+:root[data-theme="dark"] .stat-good .num{color:#34D399;}
+:root[data-theme="dark"] .stat-bad{background:#3A1414;}
+:root[data-theme="dark"] .stat-bad .num{color:#F87171;}
+:root[data-theme="dark"] .stat-neutral{background:#232349;}
+:root[data-theme="dark"] .stat-neutral .num{color:#A5A0FF;}
+:root[data-theme="dark"] .stat-info{background:#0E2A3A;}
+:root[data-theme="dark"] .stat-info .num{color:#38BDF8;}
+:root[data-theme="dark"] .stat-warning{background:#3A2A0E;}
+:root[data-theme="dark"] .stat-warning .num{color:#FBBF24;}
+:root[data-theme="dark"] .stat-two{background:#0E2E33;}
+:root[data-theme="dark"] .stat-two .num{color:#22D3EE;}
+:root[data-theme="dark"] .stat-four{background:#3A1414;}
+:root[data-theme="dark"] .stat-four .num{color:#F87171;}
+:root[data-theme="dark"] .stat-cash{background:#3A2A0E;}
+:root[data-theme="dark"] .stat-cash .num{color:#FBBF24;}
+:root[data-theme="dark"] .stat-bank{background:#0E2438;}
+:root[data-theme="dark"] .stat-bank .num{color:#60A5FA;}
+:root[data-theme="dark"] .pill.sold{background:#0F2E22; color:#34D399;}
+:root[data-theme="dark"] .pill.unsold{background:var(--paper-dark);}
+:root[data-theme="dark"] .msg.error{background:#3A1414; border-color:#7A3838;}
+:root[data-theme="dark"] .msg.ok{background:#0F2E22; border-color:#2D6A4F;}
+:root[data-theme="dark"] .search-safe{background:#0F2E22 !important; border-color:#34D399 !important;}
+:root[data-theme="dark"] .search-safe::placeholder{color:#5FBE8A;}
+:root[data-theme="dark"] button.danger{background:#3A1414; border-color:#7A3838;}
+:root[data-theme="dark"] .hero-banner .who button.primary{background:var(--white-card); color:var(--maroon);}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'Inter',sans-serif; font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif; font-weight:700; margin:0 0 .3em; letter-spacing:-.01em;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.app{max-width:920px; margin:0 auto; padding:16px; padding-bottom:calc(var(--nav-h) + 28px + env(safe-area-inset-bottom));}
+
+.hero-banner{
+  position:relative;
+  margin:-16px -16px 24px;
+  background:linear-gradient(135deg, #3730A3 0%, var(--maroon) 55%, #7C3AED 100%);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  padding:22px 20px 26px;
+  border-radius:0 0 26px 26px;
+  box-shadow:0 14px 34px -10px rgba(55,48,163,.5);
+  overflow:hidden;
+}
+.hero-banner::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  background:radial-gradient(circle at 88% -15%, rgba(255,255,255,.28), transparent 55%);
+}
+.hero-banner .title-block{position:relative; z-index:1; display:flex; flex-direction:column; gap:3px; min-width:0;}
+.hero-banner .eyebrow{
+  color:rgba(255,255,255,.78); font-size:11px; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase;
+}
+.hero-banner h1{
+  color:#fff; font-size:22px; font-weight:800; margin:0; letter-spacing:-.01em; line-height:1.2;
+  text-shadow:0 2px 12px rgba(0,0,0,.15);
+}
+.hero-banner .who{position:relative; z-index:1; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px; font-size:13px; flex-shrink:0; margin-left:auto;}
+.hero-banner .who button.primary{background:#fff; color:var(--maroon); border-color:#fff; box-shadow:0 2px 10px rgba(20,22,43,.2);}
+.hero-banner .who button.primary:hover{background:#F3F4F8; border-color:#F3F4F8;}
+.hero-banner .who button:not(.primary){background:rgba(255,255,255,.15); color:#fff; border-color:rgba(255,255,255,.4);}
+.hero-banner .who button:not(.primary):hover{background:rgba(255,255,255,.25);}
+
+button, .btn{
+  font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600;
+  border:1.5px solid var(--rule); background:var(--white-card); color:var(--ink);
+  padding:11px 18px; min-height:44px; border-radius:var(--radius-sm); cursor:pointer;
+  transition:transform .1s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+}
+button:hover{border-color:#C7CAD9; background:var(--paper-dark);}
+button:active{transform:scale(.97);}
+button.primary{background:var(--maroon); color:#fff; border-color:var(--maroon); box-shadow:0 4px 14px var(--maroon-glow);}
+button.primary:hover{background:var(--maroon-dark); border-color:var(--maroon-dark); box-shadow:0 6px 18px var(--maroon-glow);}
+button.danger{border-color:#FCC; color:var(--danger); background:#FEF2F2;}
+button.danger:hover{background:var(--danger); color:#fff; border-color:var(--danger);}
+
+input, select, textarea{
+  font-family:'Inter',sans-serif; font-size:15px; padding:11px 13px; min-height:44px;
+  border:1.5px solid var(--rule); border-radius:var(--radius-sm); background:var(--white-card); color:var(--ink);
+}
+input:focus, select:focus, textarea:focus{outline:none; border-color:var(--maroon); box-shadow:0 0 0 3px rgba(79,70,229,.14);}
+label{font-size:12px; color:var(--ink-soft); display:block; margin-bottom:6px; font-weight:600; letter-spacing:.01em;}
+.field{margin-bottom:12px;}
+.card{
+  background:var(--white-card); border:1px solid var(--rule); border-radius:var(--radius);
+  padding:20px; margin-bottom:18px; box-shadow:var(--shadow); overflow-x:auto;
+}
+.card h3{font-size:16.5px; margin-bottom:.5em;}
+.grid-stats{display:flex; flex-wrap:wrap; gap:10px;}
+.stat{border-radius:var(--radius-sm); padding:13px 16px; background:var(--paper-dark); flex:0 0 auto; border:1px solid rgba(20,22,43,.03); transition:transform .15s ease;}
+.stat .num{font-family:'IBM Plex Mono',monospace; font-size:21px; font-weight:700; color:var(--ink);}
+.stat .lbl{font-size:11px; font-weight:600; color:var(--ink-soft); margin-top:3px; letter-spacing:.01em;}
+.lbl-icon{font-size:17px; margin-right:5px; vertical-align:-3px; display:inline-block;}
+.stat-good{background:#ECFDF3;} .stat-good .num{color:#15803D;}
+.stat-bad{background:#FEF2F2;} .stat-bad .num{color:#B91C1C;}
+.stat-neutral{background:#EEF2FF;} .stat-neutral .num{color:#3730A3;}
+.stat-info{background:#F0F9FF;} .stat-info .num{color:#0369A1;}
+.stat-warning{background:#FFFBEB;} .stat-warning .num{color:#B45309;}
+.stat-two{background:#ECFEFF;} .stat-two .num{color:#0E7490;}
+.stat-four{background:#FEF2F2;} .stat-four .num{color:#B91C1C;}
+.stat-cash{background:#FFFBEB;} .stat-cash .num{color:#B45309;}
+.stat-bank{background:#EFF6FF;} .stat-bank .num{color:#1D4ED8;}
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+th{
+  text-align:left; padding:9px 10px; white-space:nowrap;
+  font-family:'Inter',sans-serif; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  background:var(--paper-dark); color:var(--ink-soft); font-weight:700;
+}
+td{padding:9px 10px; border-bottom:1px solid var(--rule);}
+tr:hover td{background:var(--paper-dark);}
+.v-input{color:#1D4ED8;}
+.v-formula{color:var(--ink);}
+.floor-1{background:#FBEAEA;} .floor-1 .contact{color:#B33A2E;}
+.floor-2{background:#EAF1FB;} .floor-2 .contact{color:#1D5FA8;}
+.floor-3{background:#EDF6EA;} .floor-3 .contact{color:#3E8C2E;}
+.floor-4{background:#FCEFE4;} .floor-4 .contact{color:#B35A18;}
+.floor-5{background:#F0EBF8;} .floor-5 .contact{color:#5D3EA8;}
+.floor-6{background:#FFF8E3;} .floor-6 .contact{color:#B3860A;}
+.floor-7{background:#E7F3F4;} .floor-7 .contact{color:#207E8F;}
+.floor-8{background:#FBE9E9;} .floor-8 .contact{color:#B32626;}
+.floor-9{background:#E9F1FA;} .floor-9 .contact{color:#1D5FA8;}
+.floor-10{background:#EBF6E7;} .floor-10 .contact{color:#3E9B2E;}
+.floor-11{background:#FCEEE6;} .floor-11 .contact{color:#B34B18;}
+.floor-12{background:#F5E9F0;} .floor-12 .contact{color:#A82368;}
+.floor-13{background:#E9F5E9;} .floor-13 .contact{color:#278A22;}
+.floor-x:hover td,[class*="floor-"]:hover td{filter:brightness(0.97);}
+.veh-two{background:#E7F8F8;}
+.veh-four{background:#FBE9E8;}
+.mobile{font-weight:700; font-size:16px; letter-spacing:.01em; color:var(--maroon);}
+.owner-name{font-weight:700; color:var(--ink);}
+.flat-no{font-weight:800; font-size:17px;}
+.search-safe{
+  background:#ECFDF3 !important;
+  border:1.5px solid var(--ledger-green) !important;
+  font-weight:600;
+}
+.search-safe::placeholder{color:#4E9F6B;}
+.search-safe-label{color:var(--ledger-green) !important; font-weight:700;}
+.vnum{font-weight:700; font-size:16.5px; letter-spacing:.03em;}
+.type-two{color:#0E7490; font-weight:600;}
+.type-four{color:#B91C1C; font-weight:600;}
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(20,22,43,.5); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px;
+}
+.modal-box{
+  background:var(--white-card); border:1px solid var(--rule); border-radius:18px; padding:22px 24px;
+  max-width:360px; width:100%; box-shadow:var(--shadow-lg);
+}
+.modal-box h3{margin-bottom:10px;}
+.modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:16px;}
+
+/* ---- Bottom navigation bar (mobile-app style) ---- */
+.bottom-nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:60;
+  max-width:920px; margin:0 auto;
+  display:flex; align-items:stretch;
+  background:rgba(255,255,255,.97); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-top:1px solid var(--rule); box-shadow:var(--shadow-lg);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+}
+.nav-item{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  padding:6px 2px; border-radius:var(--radius-sm); cursor:pointer; position:relative;
+  font-family:'Inter',sans-serif; font-size:10.5px; font-weight:600; color:var(--ink-soft);
+  background:none; border:none; -webkit-tap-highlight-color:transparent; transition:color .15s ease;
+}
+.nav-item .nav-icon{
+  font-size:20px; line-height:1; width:34px; height:26px; display:flex; align-items:center; justify-content:center;
+  border-radius:10px; transition:background .15s ease, transform .15s ease;
+}
+.nav-item .nav-label{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+.nav-item.active{color:var(--maroon);}
+.nav-item.active .nav-icon{background:#EEF2FF; transform:translateY(-1px);}
+.nav-more{position:relative;}
+.more-menu{
+  position:absolute; bottom:calc(100% + 12px); right:-6px; min-width:190px;
+  background:var(--white-card); border:1px solid var(--rule); border-radius:14px;
+  box-shadow:var(--shadow-lg); padding:6px; z-index:70;
+  display:none; flex-direction:column; gap:2px;
+}
+.more-menu.open{display:flex;}
+.more-menu-item{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+  font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; color:var(--ink);
+  cursor:pointer; text-align:left; white-space:nowrap;
+}
+.more-menu-item .nav-icon{font-size:16px; width:auto; height:auto; background:none;}
+.more-menu-item:hover{background:var(--paper-dark);}
+.more-menu-item.active{background:#EEF2FF; color:var(--maroon);}
+.form-row{display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:16px;}
+.form-row .field{flex:1; min-width:140px; margin-bottom:0;}
+.msg{padding:10px 14px; border-radius:10px; margin-bottom:14px; font-size:13.5px;}
+.msg.error{background:#FEF2F2; border:1px solid #FCC; color:var(--danger);}
+.msg.ok{background:#ECFDF3; border:1px solid #BBF0D0; color:#15803D;}
+.empty{color:var(--ink-soft); font-style:italic; padding:14px 0;}
+.pill{
+  font-family:'Inter',sans-serif; font-weight:600; font-size:11.5px; padding:3px 10px; border-radius:999px;
+  border:1.5px solid currentColor; display:inline-block;
+}
+.pill.sold{color:#15803D; background:#ECFDF3;}
+.pill.unsold{color:var(--ink-soft); background:var(--paper-dark);}
+.pill-select{
+  font-family:'Inter',sans-serif; font-weight:600; font-size:11.5px; padding:3px 8px; border-radius:999px;
+  border:1.5px solid currentColor; background:transparent; cursor:pointer;
+}
+.pill-select.sold{color:#15803D;}
+.pill-select.unsold{color:var(--ink-soft);}
+.config-note{font-size:12px; color:var(--ink-soft); margin-top:6px;}
+.bell-wrap{position:relative; display:inline-block; font-size:28px; line-height:1; cursor:pointer; color:#fff; padding:4px; -webkit-tap-highlight-color:transparent;}
+.notif-badge{position:absolute; top:-6px; right:-8px; background:#DC2626; color:#fff; font-size:11px; font-weight:800; min-width:19px; height:19px; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 4px; border:2px solid var(--maroon-dark);}
+@keyframes bellShake{
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50%, 70% { transform: rotate(-14deg); }
+  20%, 40%, 60%, 80% { transform: rotate(14deg); }
+  90% { transform: rotate(-4deg); }
+}
+.bell-wrap.has-notif{ animation: bellShake 1.8s ease-in-out infinite; transform-origin: 50% 0%; }
+.notif-panel{position:fixed; width:300px; max-width:85vw; max-height:360px; overflow-y:auto; background:var(--white-card); border:1px solid var(--rule); border-radius:14px; box-shadow:var(--shadow-lg); padding:6px; z-index:90; text-align:left;}
+.notif-item{padding:10px; border-bottom:1px solid var(--rule); font-size:13px; color:var(--ink); font-weight:600;}
+.notif-item:last-child{border-bottom:none;}
+.accordion-header{display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; padding:2px 0; -webkit-tap-highlight-color:transparent;}
+.accordion-header h3{margin:0;}
+.accordion-caret{font-size:13px; font-weight:800; color:var(--maroon); background:#EEF2FF; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.floor-card h3{display:flex; align-items:baseline; flex-wrap:wrap; gap:4px;}
+.floor-heading-center{justify-content:center; text-align:center; width:100%;}
+.flat-entry{display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--rule);}
+.flat-entry:last-child{border-bottom:none;}
+.flat-chip{color:#fff; font-weight:800; padding:4px 12px; border:none; font-size:13px;}
+.flat-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-left:auto;}
+a{color:var(--maroon);}
+
+@media (max-width:600px){
+  .app{padding:12px; padding-bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom));}
+  .hero-banner{margin:-12px -12px 16px; padding:16px 14px 14px;}
+  .hero-banner h1{font-size:18px;}
+  .hero-banner .eyebrow{font-size:10px;}
+  .card{padding:14px; border-radius:14px;}
+  .grid-stats{gap:8px;}
+  .stat{flex:1 1 calc(33.333% - 6px); min-width:0; padding:8px 6px; text-align:center;}
+  .stat .num{font-size:15px;}
+  .stat .lbl{font-size:9px; line-height:1.25; margin-top:2px;}
+  .lbl-icon{font-size:12px; margin-right:2px; vertical-align:-2px;}
+  th, td{padding:8px 8px; font-size:12.5px;}
+  .form-row{flex-direction:column; align-items:stretch; gap:12px;}
+  .form-row .field{width:100%; min-width:0;}
+  .form-row .field[style*="flex:0"]{width:100%;}
+  .form-row button{width:100%;}
+  .form-row.form-row-pair{flex-direction:row; gap:10px;}
+  .form-row.form-row-pair .field{width:auto; flex:1 1 0;}
+  .grid-stats-2col .stat{flex:1 1 calc(50% - 4px);}
+}
+
+@media print{
+  .bottom-nav, .hero-banner .who, .form-row, .flat-actions, button, .nav-more{display:none !important;}
+  .app{padding-bottom:0;}
+  body{background:#fff;}
+  .card{box-shadow:none; border:1px solid #ccc;}
+}
+
+/* ============================================================
+   Product Box Size — app-specific additions on top of the
+   shared design system above.
+   ============================================================ */
+.prod-card{ padding:16px 16px 14px; }
+.prod-card h3{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-size:17px; margin:0 0 10px;
+}
+.prod-card h3 .name{flex:1; min-width:0; word-break:break-word;}
+.spec-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(118px,1fr)); gap:8px;
+  margin-bottom:10px;
+}
+.spec{
+  background:var(--paper-dark); border-radius:var(--radius-sm); padding:9px 11px;
+  border:1px solid rgba(20,22,43,.03);
+}
+.spec .k{font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft);}
+.spec .v{font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700; color:var(--ink); margin-top:2px; word-break:break-all;}
+.spec .v.dim{color:#1D4ED8;}
+.spec .v.calc{color:var(--maroon);}
+.spec .v.blank{color:var(--ink-soft); font-weight:500;}
+:root[data-theme="dark"] .spec .v.dim{color:#7DA6FF;}
+
+.box-line{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:9px 11px; border-radius:var(--radius-sm);
+  background:#FFF7ED; border:1px solid #F3D9BC; margin-top:8px;
+}
+:root[data-theme="dark"] .box-line{background:#2A2117; border-color:#4A3A28;}
+.box-line .bx-dim{font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15.5px; color:#B45309;}
+:root[data-theme="dark"] .box-line .bx-dim{color:#FBBF24;}
+.box-line .bx-sep{color:var(--ink-soft); font-size:12px;}
+.box-line .bx-units{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px;}
+.box-line .bx-wt{margin-left:auto; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14px; color:var(--maroon);}
+.box-index{
+  flex:0 0 auto; width:22px; height:22px; border-radius:7px; background:#B45309; color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800;
+}
+
+.prod-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px;}
+.prod-actions button{padding:7px 13px; min-height:38px; font-size:12.5px;}
+
+.prod-thumb{
+  flex:0 0 auto; width:52px; height:52px; border-radius:12px; object-fit:cover;
+  border:1px solid var(--rule); background:var(--paper-dark); cursor:zoom-in;
+}
+.img-preview-wrap{display:flex; align-items:center; gap:12px; margin:6px 0 12px;}
+.img-preview-wrap img{width:64px; height:64px; border-radius:12px; object-fit:cover; border:1px solid var(--rule);}
+.lightbox{
+  position:fixed; inset:0; background:rgba(10,12,24,.88); z-index:1500;
+  display:flex; align-items:center; justify-content:center; padding:18px; cursor:zoom-out;
+}
+.lightbox img{max-width:100%; max-height:100%; border-radius:14px; box-shadow:var(--shadow-lg);}
+.file-btn{
+  display:block; width:100%; text-align:center; padding:11px 14px; min-height:44px;
+  border:1.5px dashed var(--rule); border-radius:var(--radius-sm); background:var(--white-card);
+  color:var(--ink-soft); font-size:13.5px; font-weight:600; cursor:pointer;
+}
+.file-btn:hover{border-color:var(--maroon); color:var(--maroon);}
+
+.box-editor-row{
+  display:flex; gap:8px; align-items:end; margin-bottom:8px; flex-wrap:nowrap;
+}
+.box-editor-row .field{flex:1; min-width:0; margin-bottom:0;}
+.box-editor-row input{width:100%;}
+.box-editor-row button{flex:0 0 auto; min-height:44px; padding:11px 13px;}
+
+.big-search{position:relative;}
+.big-search input{
+  width:100%; font-size:17px; padding:14px 15px 14px 44px; min-height:52px; font-weight:600;
+}
+.big-search .mag{
+  position:absolute; left:15px; top:50%; transform:translateY(-50%);
+  font-size:17px; pointer-events:none; opacity:.75;
+}
+.result-count{font-size:12px; font-weight:600; color:var(--ink-soft); margin:2px 0 12px; text-align:center;}
+.hit{background:#FDE68A; border-radius:3px; padding:0 1px;}
+:root[data-theme="dark"] .hit{background:#7C5E12; color:#FDE68A;}
+.brand-mark{
+  width:38px; height:38px; border-radius:11px; flex:0 0 auto;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3);
+  display:flex; align-items:center; justify-content:center; margin-right:11px;
+}
+.hero-banner .title-block{flex-direction:row; align-items:center;}
+</style>
+</head>
+<body>
+<div id="root"><div class="app"><div class="empty">Loading&hellip;</div></div></div>
+<script>
+/* ============================================================
+   PRODUCT BOX SIZE — single-file app.
+   Mirrors the "Product Box Dimension" xlsm sheet:
+     Product Name | Box Weight | Box Dimension | Unit in Box |
+     Unit Weight | FBA Unit | FBA Weight | Item Dimension |
+     Item Box Dimension
+   Box Weight and FBA Weight are never stored — they are the
+   sheet's own formulas (=D*E and =E*F) recomputed on screen,
+   so they can never drift out of sync with the numbers.
+   ============================================================ */
+const SUPABASE_URL = "https://deyetzwxatogmdmjacvo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRleWV0end4YXRvZ21kbWphY3ZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MDUzNjcsImV4cCI6MjA5ODk4MTM2N30.wbdWs_Y0YvFOsQWjjodqPRuWS1H1Dx57jjb8GQtrkA0";
+const IMAGE_BUCKET = "pbs-images";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const root = document.getElementById('root');
+let state = { user:null, tab:'search' };
+let productsCache = [];
+let searchTerm = '';
+let editingProductId = null;
+let editingBagId = null;
+let boxDraft = [];        // rows in the Add/Edit product form's box list
+let imageDraft = null;    // image_url currently attached in the form
+
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- number / text helpers ---------------- */
+function num(v){ const n = Number(v); return Number.isFinite(n) ? n : null; }
+function fmtWt(n){
+  if(n === null || n === undefined || n === '' || !Number.isFinite(Number(n))) return null;
+  return (Math.round(Number(n)*1000)/1000).toString();
+}
+function kg(n){ const f = fmtWt(n); return f===null ? null : f + ' kg'; }
+function boxWeight(p, b){
+  const u = num(b.unit_in_box), w = num(p.unit_weight);
+  return (u===null || w===null) ? null : u*w;
+}
+function fbaWeight(p){
+  const f = num(p.fba_unit), w = num(p.unit_weight);
+  return (f===null || w===null) ? null : f*w;
+}
+function friendlyDbError(error){
+  if(!error) return '';
+  const m = (error.message||'').toLowerCase();
+  if(m.includes('does not exist') || m.includes('could not find the table')
+     || error.code === '42P01' || error.code === 'PGRST205')
+    return 'Database table abhi bani nahi hai. Settings tab kholo, "Setup SQL Copy Karo" dabao aur Supabase SQL Editor me ek baar chala do.';
+  if(m.includes('bucket not found'))
+    return 'Image bucket abhi bana nahi hai. Settings ka Setup SQL ek baar chala do.';
+  if(m.includes('duplicate key')) return 'Ye product name pehle se list me hai.';
+  if(m.includes('row-level security') || m.includes('permission'))
+    return 'Ye change karne ki permission nahi hai — PIN se Unlock karo.';
+  if(m.includes('failed to fetch')) return 'Internet nahi mil raha. Connection check karke firse try karo.';
+  return error.message || 'Kuch gadbad hui.';
+}
+function toast(msg, kind){
+  const old = document.getElementById('app-toast'); if(old) old.remove();
+  const t = el('<div id="app-toast" style="position:fixed; left:50%; transform:translateX(-50%);' +
+    'bottom:calc(var(--nav-h) + 22px); z-index:1200; max-width:88vw; text-align:center;' +
+    'background:' + (kind==='error'?'var(--danger)':'#15803D') + '; color:#fff; font-weight:600; font-size:13.5px;' +
+    'padding:11px 18px; border-radius:12px; box-shadow:var(--shadow-lg);">' + esc(msg) + '</div>');
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3600);
+}
+
+/* ---------------- Settings (device-local) ---------------- */
+const THEME_KEY = 'pbs_theme';
+const DEFAULT_TAB_KEY = 'pbs_default_tab';
+function getTheme(){ return localStorage.getItem(THEME_KEY) || 'auto'; }
+function applyTheme(){
+  const theme = getTheme();
+  const resolved = theme === 'auto'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+  document.documentElement.setAttribute('data-theme', resolved);
+}
+function setTheme(theme){ localStorage.setItem(THEME_KEY, theme); applyTheme(); render(); }
+applyTheme();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(getTheme()==='auto') applyTheme(); });
+function getDefaultTab(){ return localStorage.getItem(DEFAULT_TAB_KEY) || 'search'; }
+function setDefaultTab(k){ localStorage.setItem(DEFAULT_TAB_KEY, k); }
+
+/* ---------------- PIN-gated WRITE access ----------------
+   Search and viewing are open to anyone who has the link.
+   Add / Edit / Delete ask for a PIN once per device and stay
+   unlocked until "Lock" is pressed.
+
+   NOTE ON WHAT THIS PIN IS AND ISN'T: it guards against a
+   stray tap on a shared phone, not against someone determined
+   to reach the database — the Supabase row policies for this
+   app allow writes from the public key that ships in this
+   file. Treat the app link the same way you would treat the
+   spreadsheet it replaced: fine inside the team, not public. */
+const ADMIN_PIN = "1201";
+const PIN_UNLOCK_KEY = "pbs_pin_unlocked";
+
+function pinStillValid(){ return localStorage.getItem(PIN_UNLOCK_KEY) === "true"; }
+function unlocked(){ return pinStillValid(); }
+
+let pinActionInFlight = false;
+async function withPin(action){
+  if(pinActionInFlight) return;
+  const guarded = async ()=>{
+    pinActionInFlight = true;
+    try{ await action(); } finally{ pinActionInFlight = false; }
+  };
+  if(pinStillValid()){ await guarded(); return; }
+  showPinModal(guarded);
+}
+function showPinModal(action){
+  const old = document.getElementById('pin-modal'); if(old) old.remove();
+  const overlay = el(`<div class="modal-backdrop" id="pin-modal">
+    <div class="modal-box">
+      <h3>Enter PIN</h3>
+      <p class="config-note">Add / Edit / Delete karne ke liye zaroori hai. Lock dabane tak is device par unlock rahega.</p>
+      <div id="pin-modal-msg"></div>
+      <input id="pin-modal-input" type="password" inputmode="numeric" maxlength="6" style="width:100%; letter-spacing:.3em; text-align:center; font-size:20px" autofocus>
+      <div class="modal-actions">
+        <button onclick="document.getElementById('pin-modal').remove(); render();">Cancel</button>
+        <button class="primary" id="pin-modal-submit">Unlock</button>
+      </div>
+    </div>
+  </div>`);
+  document.body.appendChild(overlay);
+  const submit = async ()=>{
+    const pin = document.getElementById('pin-modal-input').value.trim();
+    const msgBox = document.getElementById('pin-modal-msg');
+    if(pin !== ADMIN_PIN){ msgBox.innerHTML = '<div class="msg error">Wrong PIN.</div>'; return; }
+    localStorage.setItem(PIN_UNLOCK_KEY, "true");
+    overlay.remove();
+    await action();
+  };
+  document.getElementById('pin-modal-submit').onclick = submit;
+  document.getElementById('pin-modal-input').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+}
+async function unlockOnly(){ await withPin(async ()=>{ render(); }); }
+async function lockNow(){
+  localStorage.removeItem(PIN_UNLOCK_KEY);
+  editingProductId = null; editingBagId = null; boxDraft = []; imageDraft = null;
+  if(HIDDEN_TAB_KEYS.includes(state.tab)) state.tab = 'search';
+  render();
+}
+/* Tapping any input (except the green search boxes) asks for the PIN
+   up front, so nobody starts typing into a form they can't save. */
+document.addEventListener('focusin', (e)=>{
+  const t = e.target;
+  if(t.tagName === 'INPUT' && t.type !== 'file' && t.id !== 'pin-modal-input'
+     && !t.classList.contains('search-safe') && !unlocked()){
+    t.blur();
+    showPinModal(async ()=>{ render(); });
+  }
+});
+
+/* ---------------- data loading ---------------- */
+async function loadProducts(){
+  const {data, error} = await sb
+    .from('pbs_products')
+    .select('id, name, unit_weight, fba_unit, item_dimension, item_box_dimension, notes, image_url, pbs_boxes(id, box_dimension, unit_in_box, sort_order)')
+    .order('name');
+  if(error) return {error};
+  (data||[]).forEach(p=>{
+    p.pbs_boxes = (p.pbs_boxes||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  });
+  productsCache = data || [];
+  return {data: productsCache};
+}
+
+/* ---------------- product image ---------------- */
+async function uploadProductImage(file){
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = 'prod_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
+  const {error} = await sb.storage.from(IMAGE_BUCKET).upload(path, file, {cacheControl:'3600', upsert:false});
+  if(error){ toast('Photo upload nahi hua: ' + friendlyDbError(error), 'error'); return null; }
+  const {data} = sb.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+async function onProductImagePick(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(!/^image\//.test(file.type)){ toast('Sirf image file chalegi.', 'error'); input.value=''; return; }
+  if(file.size > 8*1024*1024){ toast('Photo 8 MB se choti honi chahiye.', 'error'); input.value=''; return; }
+  const btn = document.getElementById('img-pick-label');
+  if(btn) btn.textContent = 'Uploading…';
+  const url = await uploadProductImage(file);
+  if(url){ imageDraft = url; toast('Photo lag gayi.'); }
+  input.value = '';
+  renderImagePicker();
+}
+function clearProductImage(){ imageDraft = null; renderImagePicker(); }
+function renderImagePicker(){
+  const wrap = document.getElementById('img-picker');
+  if(!wrap) return;
+  wrap.innerHTML = (imageDraft
+      ? `<div class="img-preview-wrap">
+           <img src="${esc(imageDraft)}" alt="">
+           <div style="flex:1; min-width:0;">
+             <div class="config-note" style="margin:0">Photo lagi hui hai.</div>
+           </div>
+           <button class="danger" onclick="clearProductImage()" style="min-height:38px; padding:7px 12px;">✕ Hatao</button>
+         </div>`
+      : '') +
+    `<label class="file-btn" id="img-pick-label" for="p_img">📷 ${imageDraft ? 'Photo Badlo' : 'Product Photo Upload Karo'}</label>
+     <input id="p_img" type="file" accept="image/*" style="display:none" onchange="onProductImagePick(this)">`;
+}
+function openLightbox(url){
+  const box = el('<div class="lightbox" onclick="this.remove()"><img src="' + esc(url) + '" alt=""></div>');
+  document.body.appendChild(box);
+}
+
+/* ---------------- shared product card ---------------- */
+function markHit(text, term){
+  const s = String(text==null?'':text);
+  if(!term) return esc(s);
+  const i = s.toLowerCase().indexOf(term.toLowerCase());
+  if(i < 0) return esc(s);
+  return esc(s.slice(0,i)) + '<span class="hit">' + esc(s.slice(i, i+term.length)) + '</span>' + esc(s.slice(i+term.length));
+}
+function specHtml(label, value, cls){
+  const blank = (value === null || value === undefined || value === '');
+  return '<div class="spec"><div class="k">' + esc(label) + '</div>' +
+    '<div class="v ' + (blank ? 'blank' : (cls||'')) + '">' + (blank ? '—' : esc(value)) + '</div></div>';
+}
+function productCardHtml(p, opts){
+  opts = opts || {};
+  const term = opts.term || '';
+  const boxes = p.pbs_boxes || [];
+  return `<div class="card prod-card">
+    <h3>
+      ${p.image_url ? `<img class="prod-thumb" src="${esc(p.image_url)}" alt="" onclick="openLightbox('${esc(p.image_url)}')">` : ''}
+      <span class="name">${markHit(p.name, term)}</span>
+      ${boxes.length > 1 ? `<span class="pill" style="background:#FFF7ED; border-color:#F3D9BC; color:#B45309; font-size:11px;">${boxes.length} box sizes</span>` : ''}
+    </h3>
+    <div class="spec-grid">
+      ${specHtml('Unit Weight', kg(p.unit_weight))}
+      ${specHtml('FBA Unit', p.fba_unit)}
+      ${specHtml('FBA Weight', kg(fbaWeight(p)), 'calc')}
+      ${specHtml('Item Dimension', p.item_dimension, 'dim')}
+      ${specHtml('Item Box Dimension', p.item_box_dimension, 'dim')}
+      ${p.notes ? specHtml('Note', p.notes) : ''}
+    </div>
+    ${boxes.length ? boxes.map((b,i)=>`<div class="box-line">
+        ${boxes.length > 1 ? `<span class="box-index">${i+1}</span>` : '<span class="lbl-icon">📦</span>'}
+        <span class="bx-dim">${b.box_dimension ? esc(b.box_dimension) : '—'}</span>
+        <span class="bx-sep">×</span>
+        <span class="bx-units">${b.unit_in_box == null ? '—' : esc(b.unit_in_box)} unit</span>
+        <span class="bx-wt">${kg(boxWeight(p,b)) || '—'}</span>
+      </div>`).join('')
+      : `<div class="box-line"><span class="lbl-icon">📦</span><span class="bx-dim">—</span>
+         <span class="bx-sep">box detail baaki hai</span></div>`}
+    ${opts.editable ? `<div class="prod-actions">
+        <button onclick="editProduct(${p.id})">✏️ Edit</button>
+        <button class="danger" onclick="deleteProduct(${p.id})">🗑️</button>
+      </div>` : ''}
+  </div>`;
+}
+
+/* ---------------- app shell ---------------- */
+const TABS = [
+  ['search','Search'],
+  ['products','Products'],
+  ['bags','Bags'],
+  ['deleted','Deleted Items'],
+  ['settings','Settings'],
+];
+const HIDDEN_TAB_KEYS = ['deleted','settings'];
+const NO_PIN_MORE_TABS = ['settings'];
+const TAB_ICONS = { search:'🔍', products:'📦', bags:'🛍️', deleted:'♻️', settings:'⚙️' };
+
+const BOX_LOGO = `<svg width="24" height="24" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#A67954" stroke-width="2.6" stroke-linejoin="round">
+    <path d="M15.5 36 50 19.5 84.5 36 50 52.5Z" fill="#F3D0AE"/>
+    <path d="M15.5 36 50 52.5V86.5L15.5 70Z" fill="#E2B791"/>
+    <path d="M50 52.5 84.5 36V70L50 86.5Z" fill="#C69871"/>
+  </g>
+</svg>`;
+
+function topbar(){
+  const on = unlocked();
+  return `<div class="hero-banner">
+    <div class="title-block">
+      <span class="brand-mark">${BOX_LOGO}</span>
+      <span>
+        <span class="eyebrow" style="display:block">Packing Reference</span>
+        <h1>Product Box Size</h1>
+      </span>
+    </div>
+    <div class="who">
+      <span class="pill ${on?'sold':'unsold'}">${on?'Unlocked':'View Only'}</span>
+      ${on ? '<button onclick="lockNow()">Lock</button>' : '<button class="primary" onclick="unlockOnly()">Unlock</button>'}
+    </div>
+  </div>`;
+}
+async function render(){
+  if(HIDDEN_TAB_KEYS.includes(state.tab) && !NO_PIN_MORE_TABS.includes(state.tab) && !unlocked()){
+    state.tab = 'search';
+  }
+  const primary = TABS.filter(([k])=> !HIDDEN_TAB_KEYS.includes(k));
+  const secondary = TABS.filter(([k])=> HIDDEN_TAB_KEYS.includes(k));
+  const onSecondary = HIDDEN_TAB_KEYS.includes(state.tab);
+  root.innerHTML = `<div class="app">
+    ${topbar()}
+    <div id="tab-content"><div class="empty">Loading…</div></div>
+  </div>
+  <nav class="bottom-nav">
+    ${primary.map(([k,label])=>`<div class="nav-item ${state.tab===k?'active':''}" onclick="setTab('${k}')">
+      <span class="nav-icon">${TAB_ICONS[k]}</span><span class="nav-label">${label}</span>
+    </div>`).join('')}
+    <div class="nav-item nav-more ${onSecondary?'active':''}" onclick="toggleMoreMenu(event)">
+      <span class="nav-icon">⋯</span><span class="nav-label">More</span>
+      <div class="more-menu" id="more-menu">
+        ${secondary.map(([k,label])=>`<div class="more-menu-item ${state.tab===k?'active':''}"
+            onclick="event.stopPropagation(); closeMoreMenu(); onMoreTabSelect('${k}')">
+          <span class="nav-icon">${TAB_ICONS[k]}</span>${label}
+        </div>`).join('')}
+      </div>
+    </div>
+  </nav>`;
+  await renderTabContent();
+}
+function setTab(k){
+  state.tab = k;
+  editingProductId = null; editingBagId = null; boxDraft = []; imageDraft = null;
+  render();
+}
+function toggleMoreMenu(e){ e.stopPropagation(); const m=document.getElementById('more-menu'); if(m) m.classList.toggle('open'); }
+function closeMoreMenu(){ const m=document.getElementById('more-menu'); if(m) m.classList.remove('open'); }
+document.addEventListener('click', (e)=>{
+  const menu = document.getElementById('more-menu');
+  if(menu && menu.classList.contains('open') && !e.target.closest('.nav-more')) menu.classList.remove('open');
+});
+async function onMoreTabSelect(k){
+  if(!k) return;
+  if(NO_PIN_MORE_TABS.includes(k)){ state.tab = k; render(); return; }
+  await withPin(async ()=>{ state.tab = k; render(); });
+}
+function toggleAccordion(id){
+  const body = document.getElementById(id+'_body');
+  const caret = document.getElementById(id+'_caret');
+  if(!body) return;
+  const willOpen = body.style.display === 'none';
+  body.style.display = willOpen ? '' : 'none';
+  if(caret) caret.textContent = willOpen ? '▴' : '▾';
+}
+function openAccordion(id){
+  const body = document.getElementById(id+'_body');
+  const caret = document.getElementById(id+'_caret');
+  if(body) body.style.display = '';
+  if(caret) caret.textContent = '▴';
+}
+async function renderTabContent(){
+  const box = document.getElementById('tab-content');
+  if(!box) return;
+  try{
+    if(state.tab==='search')   return await renderSearchTab(box);
+    if(state.tab==='products') return await renderProductsTab(box);
+    if(state.tab==='bags')     return await renderBagsTab(box);
+    if(state.tab==='deleted')  return await renderDeletedTab(box);
+    if(state.tab==='settings') return await renderSettingsTab(box);
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="msg error"><b>Something broke:</b> ' + esc(err.message || err) + '</div>';
+  }
+}
+
+/* ---------------- SEARCH tab ---------------- */
+async function renderSearchTab(box){
+  const {error} = await loadProducts();
+  box.innerHTML = `
+    <div class="card">
+      <div class="big-search">
+        <span class="mag">🔍</span>
+        <input id="q" class="search-safe" placeholder="Product ka naam type karo…" value="${esc(searchTerm)}" autocomplete="off">
+      </div>
+      <p class="config-note" style="margin:10px 0 0; text-align:center;">
+        Sheet ke SEARCH box jaisa hi — naam type karte hi neeche result aa jayega.
+      </p>
+      ${error?`<div class="msg error" style="margin-top:12px">${esc(friendlyDbError(error))}</div>`:''}
+    </div>
+    <div id="search-results"></div>`;
+  const input = document.getElementById('q');
+  input.addEventListener('input', ()=>{ searchTerm = input.value; paintSearchResults(); });
+  paintSearchResults();
+}
+function matchProduct(p, t){
+  if(!t) return false;
+  const hay = [p.name, p.item_dimension, p.item_box_dimension, p.notes]
+    .concat((p.pbs_boxes||[]).map(b=>b.box_dimension));
+  return hay.some(v => v && String(v).toLowerCase().includes(t));
+}
+function paintSearchResults(){
+  const wrap = document.getElementById('search-results');
+  if(!wrap) return;
+  const t = searchTerm.trim().toLowerCase();
+  if(!t){
+    wrap.innerHTML = `<div class="card"><p class="empty">
+      Upar naam likhte hi us product ka box size, unit in box, unit weight aur FBA detail dikhega.<br>
+      Total ${productsCache.length} product list me hain.</p></div>`;
+    return;
+  }
+  const hits = productsCache.filter(p => matchProduct(p, t));
+  wrap.innerHTML = hits.length
+    ? `<p class="result-count">${hits.length} result${hits.length>1?'s':''}</p>` +
+      hits.map(p=>productCardHtml(p, {term: searchTerm.trim()})).join('')
+    : `<div class="card"><p class="empty">"${esc(searchTerm)}" naam ka koi product nahi mila.</p></div>`;
+}
+
+/* ---------------- PRODUCTS tab (add / edit / delete) ---------------- */
+async function renderProductsTab(box){
+  const on = unlocked();
+  const {error} = await loadProducts();
+  const editing = editingProductId ? productsCache.find(p=>p.id===editingProductId) : null;
+  box.innerHTML = `
+    ${!on ? '<p class="config-note">🔒 Add / Edit / Delete ke liye upar "Unlock" dabao.</p>' : `
+    <div class="card">
+      <div class="accordion-header" onclick="toggleAccordion('acc_prod')">
+        <h3>${editing ? '✏️ Edit Product' : '➕ Add Product'}</h3>
+        <span class="accordion-caret" id="acc_prod_caret">${editing?'▴':'▾'}</span>
+      </div>
+      <div class="accordion-body" id="acc_prod_body" style="display:${editing?'':'none'}; margin-top:12px;">
+        <div class="field"><label>Product Name *</label>
+          <input id="p_name" value="${esc(editing?editing.name:'')}" placeholder="e.g. Door Chime" style="width:100%"></div>
+
+        <div id="img-picker"></div>
+
+        <div class="form-row">
+          <div class="field"><label>Unit Weight (kg)</label>
+            <input id="p_uw" type="number" step="0.001" inputmode="decimal" value="${editing&&editing.unit_weight!=null?editing.unit_weight:''}"></div>
+          <div class="field"><label>FBA Unit</label>
+            <input id="p_fba" type="number" step="1" inputmode="numeric" value="${editing&&editing.fba_unit!=null?editing.fba_unit:''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Item Dimension</label>
+            <input id="p_idim" value="${esc(editing?(editing.item_dimension||''):'')}" placeholder="19.5x11x2.5"></div>
+          <div class="field"><label>Item Box Dimension</label>
+            <input id="p_ibdim" value="${esc(editing?(editing.item_box_dimension||''):'')}" placeholder="8x5x2.5"></div>
+        </div>
+        <div class="field"><label>Note</label>
+          <input id="p_notes" value="${esc(editing?(editing.notes||''):'')}" placeholder="optional" style="width:100%"></div>
+
+        <label style="margin-top:6px">Box Sizes (ek product ke kai box ho sakte hain)</label>
+        <div id="box-editor"></div>
+        <button onclick="addBoxDraftRow()" style="width:100%; margin-top:2px;">➕ Ek aur Box Size</button>
+
+        <div class="modal-actions">
+          ${editing ? '<button onclick="resetProductForm()">Cancel</button>' : ''}
+          <button class="primary" onclick="saveProduct()">${editing?'Save Changes':'Add Product'}</button>
+        </div>
+      </div>
+    </div>`}
+    <div class="card">
+      <div class="big-search">
+        <span class="mag">🔍</span>
+        <input id="plist_q" class="search-safe" placeholder="List me se dhundo…" autocomplete="off">
+      </div>
+      ${error?`<div class="msg error" style="margin-top:12px">${esc(friendlyDbError(error))}</div>`:''}
+    </div>
+    <div id="products-list"></div>`;
+  if(on){ renderBoxEditor(); renderImagePicker(); }
+  const q = document.getElementById('plist_q');
+  if(q) q.addEventListener('input', paintProductsList);
+  paintProductsList();
+  if(editing) openAccordion('acc_prod');
+}
+function paintProductsList(){
+  const wrap = document.getElementById('products-list');
+  if(!wrap) return;
+  const t = (document.getElementById('plist_q')?.value || '').trim().toLowerCase();
+  const list = t ? productsCache.filter(p=>matchProduct(p,t)) : productsCache;
+  wrap.innerHTML = `<p class="result-count">${list.length} of ${productsCache.length} products</p>` +
+    (list.length
+      ? list.map(p=>productCardHtml(p, {editable: unlocked(), term: t})).join('')
+      : '<div class="card"><p class="empty">Koi product nahi mila.</p></div>');
+}
+function renderBoxEditor(){
+  const wrap = document.getElementById('box-editor');
+  if(!wrap) return;
+  if(!boxDraft.length) boxDraft = [{box_dimension:'', unit_in_box:''}];
+  wrap.innerHTML = boxDraft.map((b,i)=>`
+    <div class="box-editor-row">
+      <div class="field"><label>Box Dimension ${boxDraft.length>1?(i+1):''}</label>
+        <input value="${esc(b.box_dimension||'')}" placeholder="42x42x43" oninput="boxDraft[${i}].box_dimension=this.value"></div>
+      <div class="field"><label>Unit in Box</label>
+        <input type="number" step="1" inputmode="numeric" value="${b.unit_in_box==null?'':esc(b.unit_in_box)}"
+               placeholder="100" oninput="boxDraft[${i}].unit_in_box=this.value"></div>
+      <button class="danger" onclick="removeBoxDraftRow(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+function addBoxDraftRow(){ boxDraft.push({box_dimension:'', unit_in_box:''}); renderBoxEditor(); }
+function removeBoxDraftRow(i){
+  boxDraft.splice(i,1);
+  if(!boxDraft.length) boxDraft=[{box_dimension:'',unit_in_box:''}];
+  renderBoxEditor();
+}
+function resetProductForm(){ editingProductId = null; boxDraft = []; imageDraft = null; render(); }
+async function editProduct(id){
+  await withPin(async ()=>{
+    const p = productsCache.find(x=>x.id===id);
+    editingProductId = id;
+    boxDraft = p ? (p.pbs_boxes||[]).map(b=>({box_dimension:b.box_dimension||'', unit_in_box:b.unit_in_box==null?'':b.unit_in_box})) : [];
+    imageDraft = p ? (p.image_url || null) : null;
+    state.tab = 'products';
+    await render();
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+}
+async function saveProduct(){
+  await withPin(async ()=>{
+    const name = document.getElementById('p_name').value.trim();
+    if(!name){ toast('Product name likhna zaroori hai.', 'error'); return; }
+    const uw = document.getElementById('p_uw').value;
+    const fba = document.getElementById('p_fba').value;
+    const payload = {
+      name,
+      unit_weight: uw === '' ? null : Number(uw),
+      fba_unit:    fba === '' ? null : parseInt(fba, 10),
+      item_dimension:     document.getElementById('p_idim').value.trim()  || null,
+      item_box_dimension: document.getElementById('p_ibdim').value.trim() || null,
+      notes:              document.getElementById('p_notes').value.trim() || null,
+      image_url:          imageDraft || null,
+    };
+    let productId = editingProductId;
+    if(productId){
+      const {error} = await sb.from('pbs_products').update(payload).eq('id', productId);
+      if(error){ toast(friendlyDbError(error), 'error'); return; }
+      const {error:delErr} = await sb.from('pbs_boxes').delete().eq('product_id', productId);
+      if(delErr){ toast(friendlyDbError(delErr), 'error'); return; }
+    } else {
+      const {data, error} = await sb.from('pbs_products').insert(payload).select('id').single();
+      if(error){ toast(friendlyDbError(error), 'error'); return; }
+      productId = data.id;
+    }
+    // Blank rows are simply skipped — the sheet has plenty of products
+    // whose box detail isn't filled in yet, and those stay blank here too.
+    const rows = boxDraft
+      .map((b,i)=>({
+        product_id: productId,
+        box_dimension: (b.box_dimension||'').trim() || null,
+        unit_in_box: (b.unit_in_box === '' || b.unit_in_box == null) ? null : parseInt(b.unit_in_box, 10),
+        sort_order: i,
+      }))
+      .filter(r => r.box_dimension !== null || r.unit_in_box !== null);
+    if(rows.length){
+      const {error} = await sb.from('pbs_boxes').insert(rows);
+      if(error){ toast(friendlyDbError(error), 'error'); return; }
+    }
+    toast(editingProductId ? 'Product update ho gaya.' : 'Product add ho gaya.');
+    editingProductId = null; boxDraft = []; imageDraft = null;
+    await render();
+  });
+}
+async function deleteProduct(id){
+  await withPin(async ()=>{
+    const p = productsCache.find(x=>x.id===id);
+    if(!p) return;
+    if(!confirm('"' + p.name + '" delete karna hai?\n\nDeleted Items tab se wapas restore kar sakte ho.')) return;
+    const snapshot = {
+      name:p.name, unit_weight:p.unit_weight, fba_unit:p.fba_unit,
+      item_dimension:p.item_dimension, item_box_dimension:p.item_box_dimension,
+      notes:p.notes, image_url:p.image_url,
+      boxes: (p.pbs_boxes||[]).map(b=>({box_dimension:b.box_dimension, unit_in_box:b.unit_in_box, sort_order:b.sort_order})),
+    };
+    const {error:snapErr} = await sb.from('pbs_deleted_items').insert({
+      table_name:'pbs_products', row_data:snapshot, summary:'Product — ' + p.name,
+    });
+    if(snapErr){ toast(friendlyDbError(snapErr), 'error'); return; }
+    const {error} = await sb.from('pbs_products').delete().eq('id', id);
+    if(error){ toast(friendlyDbError(error), 'error'); return; }
+    toast('Delete ho gaya — Deleted Items se restore kar sakte ho.');
+    await render();
+  });
+}
+
+/* ---------------- BAGS tab (Flipkart QR + Barcode bag sizes) ---------------- */
+async function renderBagsTab(box){
+  const on = unlocked();
+  const {data, error} = await sb.from('pbs_bags').select('*').order('sort_order');
+  const bags = data || [];
+  const editing = editingBagId ? bags.find(b=>b.id===editingBagId) : null;
+  box.innerHTML = `
+    ${!on ? '<p class="config-note">🔒 Add / Edit / Delete ke liye upar "Unlock" dabao.</p>' : `
+    <div class="card">
+      <div class="accordion-header" onclick="toggleAccordion('acc_bag')">
+        <h3>${editing ? '✏️ Edit Bag' : '➕ Add Bag'}</h3>
+        <span class="accordion-caret" id="acc_bag_caret">${editing?'▴':'▾'}</span>
+      </div>
+      <div class="accordion-body" id="acc_bag_body" style="display:${editing?'':'none'}; margin-top:12px;">
+        <div class="form-row">
+          <div class="field"><label>Bag Code</label>
+            <input id="b_code" value="${esc(editing?editing.code:'')}" placeholder="SB2"></div>
+          <div class="field" style="flex:2"><label>Product / Size</label>
+            <input id="b_prod" value="${esc(editing?(editing.product||''):'')}" placeholder="Meter Tape"></div>
+        </div>
+        <div class="modal-actions">
+          ${editing ? '<button onclick="editingBagId=null; render();">Cancel</button>' : ''}
+          <button class="primary" onclick="saveBag()">${editing?'Save Changes':'Add Bag'}</button>
+        </div>
+      </div>
+    </div>`}
+    <div class="card">
+      <h3>🛍️ Flipkart QR + Barcode Bag</h3>
+      ${error?`<div class="msg error">${esc(friendlyDbError(error))}</div>`:''}
+      ${bags.length ? `<table>
+        <thead><tr><th>Bag</th><th>Product / Size</th>${on?'<th></th>':''}</tr></thead>
+        <tbody>${bags.map(b=>`<tr>
+          <td class="mono" style="font-weight:800; color:var(--maroon);">${esc(b.code)}</td>
+          <td>${esc(b.product||'—')}</td>
+          ${on?`<td style="white-space:nowrap; text-align:right;">
+            <button onclick="editBag(${b.id})" style="padding:5px 9px; min-height:32px;">✏️</button>
+            <button class="danger" onclick="deleteBag(${b.id})" style="padding:5px 9px; min-height:32px;">🗑️</button>
+          </td>`:''}
+        </tr>`).join('')}</tbody></table>` : '<p class="empty">Koi bag size add nahi hua.</p>'}
+    </div>`;
+  if(editing) openAccordion('acc_bag');
+}
+async function editBag(id){ await withPin(async ()=>{ editingBagId = id; await render(); window.scrollTo({top:0, behavior:'smooth'}); }); }
+async function saveBag(){
+  await withPin(async ()=>{
+    const code = document.getElementById('b_code').value.trim();
+    if(!code){ toast('Bag code likhna zaroori hai.', 'error'); return; }
+    const payload = { code, product: document.getElementById('b_prod').value.trim() || null };
+    let error;
+    if(editingBagId){
+      ({error} = await sb.from('pbs_bags').update(payload).eq('id', editingBagId));
+    } else {
+      const {data} = await sb.from('pbs_bags').select('sort_order').order('sort_order',{ascending:false}).limit(1);
+      payload.sort_order = data && data.length ? (data[0].sort_order||0)+1 : 0;
+      ({error} = await sb.from('pbs_bags').insert(payload));
+    }
+    if(error){ toast(friendlyDbError(error), 'error'); return; }
+    toast(editingBagId ? 'Bag update ho gaya.' : 'Bag add ho gaya.');
+    editingBagId = null;
+    await render();
+  });
+}
+async function deleteBag(id){
+  await withPin(async ()=>{
+    const {data} = await sb.from('pbs_bags').select('*').eq('id', id).single();
+    if(!data) return;
+    if(!confirm('Bag "' + data.code + '" delete karna hai?')) return;
+    const {error:snapErr} = await sb.from('pbs_deleted_items').insert({
+      table_name:'pbs_bags',
+      row_data:{code:data.code, product:data.product, sort_order:data.sort_order},
+      summary:'Bag — ' + data.code + (data.product ? ' (' + data.product + ')' : ''),
+    });
+    if(snapErr){ toast(friendlyDbError(snapErr), 'error'); return; }
+    const {error} = await sb.from('pbs_bags').delete().eq('id', id);
+    if(error){ toast(friendlyDbError(error), 'error'); return; }
+    toast('Bag delete ho gaya.');
+    await render();
+  });
+}
+
+/* ---------------- DELETED ITEMS tab (undo) ---------------- */
+async function renderDeletedTab(box){
+  const {data, error} = await sb.from('pbs_deleted_items').select('*').order('deleted_at', {ascending:false});
+  const items = data || [];
+  box.innerHTML = `<div class="card">
+    <h3>♻️ Deleted Items</h3>
+    <p class="config-note" style="margin-top:-4px">Galti se delete hua product ya bag yahan se wapas la sakte ho.</p>
+    ${error?`<div class="msg error">${esc(friendlyDbError(error))}</div>`:''}
+    ${items.length ? items.map(it=>`<div class="flat-entry">
+        <span style="flex:1; min-width:0; font-weight:600;">${esc(it.summary||it.table_name)}</span>
+        <span class="config-note" style="margin:0; font-size:11px;">${new Date(it.deleted_at).toLocaleDateString('en-IN')}</span>
+        <span class="flat-actions">
+          <button onclick="restoreDeleted(${it.id})">↩️ Restore</button>
+          <button class="danger" onclick="forgetDeleted(${it.id})" title="Hamesha ke liye hatao">🗑️</button>
+        </span>
+      </div>`).join('') : '<p class="empty">Kuch delete nahi hua hai.</p>'}
+  </div>`;
+}
+async function restoreDeleted(id){
+  await withPin(async ()=>{
+    const {data:it, error:getErr} = await sb.from('pbs_deleted_items').select('*').eq('id', id).single();
+    if(getErr || !it){ toast(friendlyDbError(getErr), 'error'); return; }
+    const row = it.row_data || {};
+    if(it.table_name === 'pbs_products'){
+      const boxes = row.boxes || [];
+      const prod = Object.assign({}, row);
+      delete prod.boxes;
+      const {data:ins, error} = await sb.from('pbs_products').insert(prod).select('id').single();
+      if(error){ toast(friendlyDbError(error), 'error'); return; }
+      if(boxes.length){
+        const {error:bErr} = await sb.from('pbs_boxes').insert(boxes.map((b,i)=>({
+          product_id: ins.id, box_dimension:b.box_dimension, unit_in_box:b.unit_in_box,
+          sort_order: b.sort_order == null ? i : b.sort_order,
+        })));
+        if(bErr){ toast(friendlyDbError(bErr), 'error'); return; }
+      }
+    } else if(it.table_name === 'pbs_bags'){
+      const {error} = await sb.from('pbs_bags').insert(row);
+      if(error){ toast(friendlyDbError(error), 'error'); return; }
+    }
+    await sb.from('pbs_deleted_items').delete().eq('id', id);
+    toast('Wapas restore ho gaya.');
+    await render();
+  });
+}
+async function forgetDeleted(id){
+  await withPin(async ()=>{
+    if(!confirm('Ye history entry hamesha ke liye hata dein? Phir restore nahi ho payega.')) return;
+    const {error} = await sb.from('pbs_deleted_items').delete().eq('id', id);
+    if(error){ toast(friendlyDbError(error), 'error'); return; }
+    await render();
+  });
+}
+
+/* ---------------- SETTINGS tab ---------------- */
+async function renderSettingsTab(box){
+  const theme = getTheme();
+  box.innerHTML = `
+    <div class="card">
+      <h3>⚙️ Settings</h3>
+      <div class="field"><label>Theme</label>
+        <select onchange="setTheme(this.value)">
+          <option value="auto"  ${theme==='auto'?'selected':''}>Auto (phone jaisa)</option>
+          <option value="light" ${theme==='light'?'selected':''}>Light</option>
+          <option value="dark"  ${theme==='dark'?'selected':''}>Dark</option>
+        </select>
+      </div>
+      <div class="field"><label>App khulte hi kaunsa tab</label>
+        <select onchange="setDefaultTab(this.value)">
+          ${TABS.filter(([k])=>!HIDDEN_TAB_KEYS.includes(k)).map(([k,l])=>
+            '<option value="' + k + '" ' + (getDefaultTab()===k?'selected':'') + '>' + l + '</option>').join('')}
+        </select>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📤 Export</h3>
+      <p class="config-note" style="margin-top:-4px">Poori list ek CSV file me — Excel me kholi ja sakti hai.</p>
+      <button onclick="exportCSV()" style="width:100%">⬇️ Download CSV</button>
+    </div>
+    <div class="card">
+      <h3>🛠️ Database Setup</h3>
+      <p class="config-note" style="margin-top:-4px">
+        Sirf pehli baar chahiye. Supabase → SQL Editor me ye SQL ek baar chalane se tables aur image bucket ban jaate hain.
+      </p>
+      <button onclick="copySetupSql()" style="width:100%">📋 Setup SQL Copy Karo</button>
+    </div>`;
+}
+function exportCSV(){
+  const headers = ['Product Name','Box Weight','Box Dimension','Unit in Box','Unit Weight','FBA Unit','FBA Weight','Item Dimension','Item Box Dimension','Note','Image'];
+  const rows = [];
+  productsCache.forEach(p=>{
+    const boxes = (p.pbs_boxes||[]).length ? p.pbs_boxes : [{box_dimension:null, unit_in_box:null}];
+    boxes.forEach((b,i)=>{
+      const bw = fmtWt(boxWeight(p,b));
+      const fw = fmtWt(fbaWeight(p));
+      rows.push([
+        i===0 ? p.name : '',
+        bw == null ? '' : bw,
+        b.box_dimension == null ? '' : b.box_dimension,
+        b.unit_in_box == null ? '' : b.unit_in_box,
+        i===0 ? (p.unit_weight == null ? '' : p.unit_weight) : '',
+        i===0 ? (p.fba_unit == null ? '' : p.fba_unit) : '',
+        i===0 ? (fw == null ? '' : fw) : '',
+        i===0 ? (p.item_dimension || '') : '',
+        i===0 ? (p.item_box_dimension || '') : '',
+        i===0 ? (p.notes || '') : '',
+        i===0 ? (p.image_url || '') : '',
+      ]);
+    });
+  });
+  const csv = [headers].concat(rows)
+    .map(r=>r.map(v=>'"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'product-box-size-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+const SETUP_SQL = [
+"create table if not exists public.pbs_products (",
+"  id bigint generated always as identity primary key,",
+"  name text not null,",
+"  unit_weight numeric,",
+"  fba_unit integer,",
+"  item_dimension text,",
+"  item_box_dimension text,",
+"  notes text,",
+"  image_url text,",
+"  created_at timestamptz not null default now()",
+");",
+"create unique index if not exists pbs_products_name_key on public.pbs_products (lower(name));",
+"",
+"create table if not exists public.pbs_boxes (",
+"  id bigint generated always as identity primary key,",
+"  product_id bigint not null references public.pbs_products(id) on delete cascade,",
+"  box_dimension text,",
+"  unit_in_box integer,",
+"  sort_order integer not null default 0",
+");",
+"",
+"create table if not exists public.pbs_bags (",
+"  id bigint generated always as identity primary key,",
+"  code text not null,",
+"  product text,",
+"  sort_order integer not null default 0",
+");",
+"",
+"create table if not exists public.pbs_deleted_items (",
+"  id bigint generated always as identity primary key,",
+"  table_name text not null,",
+"  row_data jsonb not null,",
+"  summary text,",
+"  deleted_at timestamptz not null default now()",
+");",
+"",
+"alter table public.pbs_products      enable row level security;",
+"alter table public.pbs_boxes         enable row level security;",
+"alter table public.pbs_bags          enable row level security;",
+"alter table public.pbs_deleted_items enable row level security;",
+"",
+"do $$",
+"declare t text;",
+"begin",
+"  foreach t in array array['pbs_products','pbs_boxes','pbs_bags','pbs_deleted_items'] loop",
+"    execute format('drop policy if exists %I on public.%I', t||'_read', t);",
+"    execute format('drop policy if exists %I on public.%I', t||'_write', t);",
+"    execute format('create policy %I on public.%I for select to anon, authenticated using (true)', t||'_read', t);",
+"    execute format('create policy %I on public.%I for all to anon, authenticated using (true) with check (true)', t||'_write', t);",
+"  end loop;",
+"end $$;",
+"",
+"insert into storage.buckets (id, name, public) values ('pbs-images','pbs-images', true)",
+"on conflict (id) do update set public = true;",
+"",
+"drop policy if exists pbs_images_read  on storage.objects;",
+"drop policy if exists pbs_images_write on storage.objects;",
+"create policy pbs_images_read  on storage.objects for select to anon, authenticated using (bucket_id = 'pbs-images');",
+"create policy pbs_images_write on storage.objects for all to anon, authenticated using (bucket_id = 'pbs-images') with check (bucket_id = 'pbs-images');",
+].join('\n');
+function copySetupSql(){
+  navigator.clipboard.writeText(SETUP_SQL)
+    .then(()=>toast('SQL copy ho gaya — Supabase SQL Editor me paste karo.'))
+    .catch(()=>{ console.log(SETUP_SQL); toast('Copy nahi hua — console me print kar diya.', 'error'); });
+}
+
+/* ---------------- boot ---------------- */
+(async function boot(){
+  state.tab = getDefaultTab();
+  await render();
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
