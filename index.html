@@ -1253,11 +1253,12 @@ function stockLineHtml(p){
       const all = vyaparRowsFor(p.id, true);
       const g = all.reduce((s,v)=>s+(num(v.current_stock)||0),0);
       const disc = isDiscontinued(p.id);
-      return `<div class="stock-line disc" onclick="toggleStockParts(${p.id})">
-        <span class="lbl-icon">⛔</span>
+      // Card par koi tag nahi — bas number; discontinued ho to sirf DISCONTINUED.
+      return `<div class="stock-line ${disc ? 'disc' : 'zero'}" onclick="toggleStockParts(${p.id})">
+        <span class="lbl-icon">${disc ? '⛔' : '📊'}</span>
         <span class="st-qty" style="text-decoration:none">${fmtQty(g)}</span>
         <span style="font-size:12px; color:var(--ink-soft)">stock</span>
-        <span class="st-tag">${disc ? 'DISCONTINUED' : '✓ જોડાયેલી · Vyapar માં item બંધ'}</span>
+        ${disc ? '<span class="st-tag">DISCONTINUED</span>' : ''}
         <span class="st-sub">${all.length} item ▾</span>
       </div>
       <div class="stock-parts" id="stockparts_${p.id}" style="display:none">
