@@ -634,6 +634,7 @@ a{color:var(--maroon);}
   font-family:'Inter',sans-serif; font-size:13px; font-weight:700;
 }
 .segmented button.on{background:var(--white-card); color:var(--maroon); box-shadow:var(--shadow);}
+.segmented button small{display:block; font-size:10.5px; font-weight:600; opacity:.75; margin-top:1px; letter-spacing:0;}
 
 /* ---- Product Mix: the FBA shipment being counted ---- */
 .add-hit, .mix-row{
@@ -1800,11 +1801,14 @@ function paintProductsList(){
     return !t || matchProduct(p,t);
   });
   // Filter button par ginti — kul, chalu, discontinued — har paint par taaza.
-  const discN = productsCache.filter(p => isDiscontinued(p.id)).length;
-  const setLbl = (id, txt) => { const b = document.getElementById(id); if(b) b.textContent = txt; };
-  setLbl('pf-all',  'બધી · ' + productsCache.length);
-  setLbl('pf-live', '✅ Continue · ' + (productsCache.length - discN));
-  setLbl('pf-disc', '⛔ Discontinued · ' + discN);
+  // Do ginti: product, aur unke peeche ke Vyapar variation (jaise CDSA ke 16).
+  const variations = p => vyaparRowsFor(p.id, true).length;
+  const grp = (pred) => { const ps = productsCache.filter(pred); return [ps.length, ps.reduce((s,p)=>s+variations(p),0)]; };
+  const all  = grp(()=>true), live = grp(p=>!isDiscontinued(p.id)), disc = grp(p=>isDiscontinued(p.id));
+  const setLbl = (id, title, c) => { const b = document.getElementById(id); if(b) b.innerHTML = esc(title) + '<small>' + c[0] + ' પ્રોડક્ટ · ' + c[1] + ' variation</small>'; };
+  setLbl('pf-all',  'બધી', all);
+  setLbl('pf-live', '✅ Continue', live);
+  setLbl('pf-disc', '⛔ Discontinued', disc);
   const editing = editingProductId ? productsCache.find(p=>p.id===editingProductId) : null;
   wrap.innerHTML = `<p class="result-count">${productsCache.length} માંથી ${list.length} પ્રોડક્ટ</p>` +
     (list.length
