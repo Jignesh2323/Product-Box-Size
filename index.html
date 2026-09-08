@@ -1722,6 +1722,11 @@ async function renderProductsTab(box){
       </div>
     </div>`)}
     <div class="card sticky-search">
+      <div class="segmented" style="margin-bottom:10px">
+        <button id="pf-all"  class="${productFilter==='all'?'on':''}"  onclick="setProductFilter('all')">બધી</button>
+        <button id="pf-live" class="${productFilter==='live'?'on':''}" onclick="setProductFilter('live')">✅ Continue</button>
+        <button id="pf-disc" class="${productFilter==='disc'?'on':''}" onclick="setProductFilter('disc')">⛔ Discontinued</button>
+      </div>
       <div class="big-search">
         <span class="mag">🔍</span>
         <input id="plist_q" class="search-safe" placeholder="લિસ્ટમાંથી શોધો…" autocomplete="off">
@@ -1774,13 +1779,32 @@ function productFormHtml(editing){
              ⛔ Discontinued <span class="config-note" style="margin:0">— આ પ્રોડક્ટ બંધ થઈ ગઈ છે</span></label>` : ''}
     </div>`;
 }
+/* Products tab ka filter: sab / chalu / discontinued. Edit chal raha ho to
+   wo product dikhta rehta hai, filter chahe jo ho. */
+let productFilter = 'all';
+function setProductFilter(f){
+  productFilter = f;
+  document.querySelectorAll('#tab-content .segmented button').forEach(b => b.classList.toggle('on', b.getAttribute('onclick') === "setProductFilter('" + f + "')"));
+  paintProductsList();
+}
 function paintProductsList(){
   const wrap = document.getElementById('products-list');
   if(!wrap) return;
   const t = (document.getElementById('plist_q')?.value || '').trim().toLowerCase();
   // Jis product ko edit kar rahe hain wo list me bana rehta hai, chahe search
   // se mel na khaye — warna form beech kaam me gayab ho jaata.
-  const list = t ? productsCache.filter(p => matchProduct(p,t) || p.id === editingProductId) : productsCache;
+  const list = productsCache.filter(p => {
+    if(p.id === editingProductId) return true;
+    if(productFilter === 'live' &&  isDiscontinued(p.id)) return false;
+    if(productFilter === 'disc' && !isDiscontinued(p.id)) return false;
+    return !t || matchProduct(p,t);
+  });
+  // Filter button par ginti — kul, chalu, discontinued — har paint par taaza.
+  const discN = productsCache.filter(p => isDiscontinued(p.id)).length;
+  const setLbl = (id, txt) => { const b = document.getElementById(id); if(b) b.textContent = txt; };
+  setLbl('pf-all',  'બધી · ' + productsCache.length);
+  setLbl('pf-live', '✅ Continue · ' + (productsCache.length - discN));
+  setLbl('pf-disc', '⛔ Discontinued · ' + discN);
   const editing = editingProductId ? productsCache.find(p=>p.id===editingProductId) : null;
   wrap.innerHTML = `<p class="result-count">${productsCache.length} માંથી ${list.length} પ્રોડક્ટ</p>` +
     (list.length
