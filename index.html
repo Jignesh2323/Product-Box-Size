@@ -543,6 +543,14 @@ a{color:var(--maroon);}
 .stock-line.zero .st-qty{color:var(--ink-soft);}
 .stock-line .st-sub{font-size:11.5px; color:var(--ink-soft); margin-left:auto;}
 .stock-parts{margin:6px 0 0 6px; padding-left:10px; border-left:2px solid var(--rule);}
+/* Phone: stock ka dabba spec grid ka chautha khaana (Item Box Dimension ke
+   bagal), breakdown grid me poori chaudai. */
+@media (max-width:899px){
+  .spec-stock{padding:0; background:none; border:none; display:flex;}
+  .spec-stock .stock-line{margin:0; flex:1; align-items:center;}
+  .spec-stock .stock-line .st-sub{margin-left:auto;}
+  .spec-grid > .spec-parts{grid-column:1 / -1; margin:0 0 0 6px;}
+}
 .stock-part{
   display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12.5px;
 }
@@ -1781,6 +1789,28 @@ function paintProductsList(){
           : productCardHtml(p, {editable: unlocked(), term: t, stock: true})).join('')
       : '<div class="card"><p class="empty">કોઈ પ્રોડક્ટ મળી નથી.</p></div>');
   if(editing){ renderBoxEditor(); renderImagePicker(); }
+  relocateStockForMobile(wrap);
+}
+/* Phone par spec ke teen dabbe 2 column me lagte hain — teesre (Item Box
+   Dimension) ke bagal wala khaana khaali reh jaata tha. Wahan stock ka dabba
+   bitha dete hain; uska breakdown grid ke neeche poori chaudai me. PC par
+   kuch nahi karte, wahan stock box ke bagal me hi theek hai. */
+function relocateStockForMobile(container){
+  if(!container || window.matchMedia('(min-width:900px)').matches) return;
+  container.querySelectorAll('.prod-card').forEach(card=>{
+    const grid = card.querySelector('.spec-grid');
+    const wrap = card.querySelector('.stock-wrap');
+    if(!grid || !wrap) return;
+    const line = wrap.querySelector(':scope > .stock-line');
+    const parts = wrap.querySelector(':scope > .stock-parts');
+    if(!line) return;
+    const cell = document.createElement('div');
+    cell.className = 'spec spec-stock';
+    cell.appendChild(line);
+    grid.appendChild(cell);
+    if(parts){ parts.classList.add('spec-parts'); grid.appendChild(parts); }
+    wrap.remove();
+  });
 }
 function renderBoxEditor(){
   const wrap = document.getElementById('box-editor');
