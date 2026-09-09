@@ -896,7 +896,7 @@ async function toggleProductDisc(productId, on){
 }
 /* Kam stock: 10 se neeche (0 samet). Discontinued product isme nahi ginte —
    jo band hi ho chuka hai uska khatam hona koi chetavni nahi. */
-const LOW_STOCK_AT = 10;
+const LOW_STOCK_AT = 30;   // user: 30 se neeche aaye tab hi chetavni
 function isLowQty(n){ return n !== null && n !== undefined && n < LOW_STOCK_AT; }
 /* Ek entry = ek chetavni. Akela item waala product apne total se; family
    (CDSA jaise) me har variant alag — total 36,000 ho to bhi CDSA STRIP ke 3
