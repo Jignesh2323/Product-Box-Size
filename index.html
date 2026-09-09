@@ -1459,6 +1459,15 @@ function closeMoreMenu(){ const m=document.getElementById('more-menu'); if(m) m.
 document.addEventListener('click', (e)=>{
   const menu = document.getElementById('more-menu');
   if(menu && menu.classList.contains('open') && !e.target.closest('.nav-more')) menu.classList.remove('open');
+  // Product Mix: search ke bahar kahin bhi tap karo to search ke result band —
+  // add karne ke baad wo list neeche ke mix ko dhak ke baithi rehti thi.
+  // composedPath isliye: "+ Add" dabate hi list dobara banti hai aur dabaya
+  // hua button DOM se hat jaata hai — closest() tab use bahar ka click samajh
+  // leta. Path me search card ho to andar ka click hai, chhodo.
+  const mixq = document.getElementById('mixq');
+  if(mixq && mixTerm && !e.composedPath().some(n => n.classList && n.classList.contains('sticky-search'))){
+    mixTerm = ''; mixq.value = ''; paintMixHits();
+  }
 });
 async function onMoreTabSelect(k){
   if(!k) return;
