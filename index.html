@@ -1576,7 +1576,10 @@ function paintBoxPanel(panel){
 }
 function matchProduct(p, t){
   if(!t) return false;
-  const hay = [p.name, p.item_dimension, p.item_box_dimension, p.notes]
+  // Note field yahan jaan-boojh kar nahi hai — "van" jaisa search "9V Battery
+  // Nakhvani" ke note se match ho jaata tha aur bilkul alag product bhi
+  // result me aa jaate the. Search sirf naam aur dimension se hi honi chahiye.
+  const hay = [p.name, p.item_dimension, p.item_box_dimension]
     .concat((p.pbs_boxes||[]).map(b=>b.box_dimension));
   return hay.some(v => v && String(v).toLowerCase().includes(t));
 }
