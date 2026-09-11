@@ -1075,6 +1075,28 @@ async function withDeletePin(action, opts){
 }
 /* Wahi PIN, alag kaam — Discontinue ke liye bhi yahi modal, par shabd uske:
    "Delete" dikhe to lagta hai product mit raha hai. */
+/* Browser ka native confirm() screen ke ekdum upar chipak jaata hai, center
+   me nahi aata. Isliye har jagah ye custom modal — .modal-backdrop pehle se
+   flex-center hai, to yahan bhi screen ke beech me khulta hai. */
+function showConfirm(message, okLabel){
+  return new Promise(resolve=>{
+    const old = document.getElementById('confirm-modal'); if(old) old.remove();
+    const overlay = el(`<div class="modal-backdrop" id="confirm-modal">
+      <div class="modal-box">
+        <p style="margin:0; white-space:pre-line">${esc(message)}</p>
+        <div class="modal-actions">
+          <button id="confirm-no">Cancel</button>
+          <button class="danger" id="confirm-yes">${esc(okLabel || 'Delete')}</button>
+        </div>
+      </div>
+    </div>`);
+    document.body.appendChild(overlay);
+    const finish = ok => { overlay.remove(); resolve(ok); };
+    document.getElementById('confirm-yes').onclick = ()=>finish(true);
+    document.getElementById('confirm-no').onclick = ()=>finish(false);
+    overlay.addEventListener('click', e => { if(e.target === overlay) finish(false); });
+  });
+}
 function showDeletePinModal(action, opts){
   opts = opts || {};
   const title = opts.title || '🗑️ Delete PIN';
@@ -1639,9 +1661,9 @@ function removeFromMix(id){
   mixList = mixList.filter(r => r.id !== id);
   saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
 }
-function clearMix(){
+async function clearMix(){
   if(!mixList.length) return;
-  if(!confirm('આખું મિક્સ કાઢી નાખવું છે?')) return;
+  if(!await showConfirm('આખું મિક્સ કાઢી નાખવું છે?')) return;
   mixList = [];
   saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
 }
@@ -1964,7 +1986,7 @@ async function deleteProduct(id){
   await withDeletePin(async ()=>{
     const p = productsCache.find(x=>x.id===id);
     if(!p) return;
-    if(!confirm('"' + p.name + '" ડિલીટ કરવી છે?\n\nDeleted Items ટૅબમાંથી પાછી લાવી શકાશે.')) return;
+    if(!await showConfirm('"' + p.name + '" ડિલીટ કરવી છે?\n\nDeleted Items ટૅબમાંથી પાછી લાવી શકાશે.')) return;
     const snapshot = {
       name:p.name, unit_weight:p.unit_weight, fba_unit:p.fba_unit,
       item_dimension:p.item_dimension, item_box_dimension:p.item_box_dimension,
@@ -2411,7 +2433,7 @@ async function deleteBag(id){
   await withDeletePin(async ()=>{
     const {data} = await sb.from('pbs_bags').select('*').eq('id', id).single();
     if(!data) return;
-    if(!confirm('Bag "' + data.code + '" ડિલીટ કરવું છે?')) return;
+    if(!await showConfirm('Bag "' + data.code + '" ડિલીટ કરવું છે?')) return;
     const {error:snapErr} = await sb.from('pbs_deleted_items').insert({
       table_name:'pbs_bags',
       row_data:{code:data.code, product:data.product, sort_order:data.sort_order},
@@ -2474,7 +2496,7 @@ async function forgetDeleted(id){
   // Ye asli mitana hai — restore ka rasta bhi band ho jata hai, isliye
   // yahan bhi wahi delete PIN.
   await withDeletePin(async ()=>{
-    if(!confirm('આ history entry હંમેશ માટે કાઢી નાખવી છે? પછી પાછી નહીં આવે.')) return;
+    if(!await showConfirm('આ history entry હંમેશ માટે કાઢી નાખવી છે? પછી પાછી નહીં આવે.')) return;
     const {error} = await sb.from('pbs_deleted_items').delete().eq('id', id);
     if(error){ toast(friendlyDbError(error), 'error'); return; }
     await render();
