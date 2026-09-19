@@ -1,18 +1,29 @@
-"""Vyapar → Product Box Size app: daily stock + continue/discontinue sync.
+"""Vyapar → Product Box Size app: manual fallback for the daily stock sync.
 
-Run by the cloud routine every morning. The routine's Claude session first
-pulls the rows from the source Supabase project (begblflwhxbbipsmxytd, via
-the Supabase MCP) and writes them to sync/vyapar_dump.json as a list of
+The daily sync no longer runs from here. It lives inside Postgres now: the
+pg_cron job `push_vyapar_to_box_app` in the source project
+(begblflwhxbbipsmxytd) fires at 05:30 UTC — 45 minutes after Vyapar's own
+pull lands around 04:45 — and the SQL function of the same name reads
+vyapar_items and POSTs it straight to pbs_vyapar_items in the app's project
+(genlxypyehcpxatcsiut). Nothing on anyone's PC has to be awake for it.
+Successful runs land in public.pbs_push_log; failures land in
+cron.job_run_details, which is the place to look when stock goes stale.
+
+That move happened because this script's cloud routine stopped on
+15 Sep 2026 and nobody noticed for three days — the app quietly served
+stock that was 6,029 units off.
+
+This script stays as the by-hand path: pull the rows from the source project
+and write them to sync/vyapar_dump.json as a list of
     [item_name, live_stock, is_active, phase_out_date_or_null]
 where live_stock = coalesce(stock_quantity_override, current_stock) — the
 override column is the figure Vyapar itself shows; current_stock is stale.
 
-This script then upserts that dump into pbs_vyapar_items in the app's own
-project (genlxypyehcpxatcsiut) and marks anything missing from the dump as
-not live, so an item deleted in Vyapar stops counting the next morning.
+It then upserts that dump into pbs_vyapar_items and marks anything missing
+from the dump as not live, so an item deleted in Vyapar stops counting. It
+prints a short summary: how many rows, how many changed, and what went away.
 
-It prints a short summary the routine relays: how many rows, how many
-changed, and any product in the app whose status flipped to discontinued.
+Needs Python, which the Windows box this repo sits on does not have.
 """
 import json, os, sys, datetime, urllib.request, urllib.parse
 
