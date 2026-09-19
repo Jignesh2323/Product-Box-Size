@@ -2663,6 +2663,7 @@ const SETUP_SQL = [
 "  unit_in_box integer,",
 "  sort_order integer not null default 0",
 ");",
+"create index if not exists pbs_boxes_product_idx on public.pbs_boxes (product_id, sort_order);",
 "",
 "create table if not exists public.pbs_bags (",
 "  id bigint generated always as identity primary key,",
