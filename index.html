@@ -1664,9 +1664,8 @@ function removeFromMix(id){
   mixList = mixList.filter(r => r.id !== id);
   saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
 }
-async function clearMix(){
+function clearMix(){
   if(!mixList.length) return;
-  if(!await showConfirm('આખું મિક્સ કાઢી નાખવું છે?')) return;
   mixList = [];
   saveMix(); refreshMixBadge(); paintMixHits(); paintMixList();
 }
