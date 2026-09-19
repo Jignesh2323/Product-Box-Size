@@ -48,6 +48,7 @@ declare
   total    int;
   live     int;
   gone     int := 0;
+  has_src  boolean;
 begin
   perform http_set_curlopt('CURLOPT_TIMEOUT_MS', '30000');
   run_ts := to_char(run_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
@@ -66,13 +67,26 @@ begin
     http_header('Authorization', 'Bearer ' || app_key)
   ];
 
+  -- source_at column app me hai ya nahi, ek baar poochh lete hain. Na ho to
+  -- uske bina bhejte hain -- ek nayi column ke chakkar me roz ki sync nahi rukni chahiye.
+  select * into resp from http((
+    'get', app_url || '?select=source_at&limit=1', hdrs, null, null)::http_request);
+  has_src := resp.status between 200 and 299;
+
   loop
     -- live stock = coalesce(override, current_stock) -- override hi wo figure hai jo Vyapar khud dikhata hai
-    select jsonb_agg(jsonb_build_object(
-             'item_name',     t.item_name,
-             'current_stock', coalesce(t.stock_quantity_override, t.current_stock),
-             'is_active',     t.is_active,
-             'synced_at',     run_ts))
+    -- source_at = us item ka apna last_stock_update, yaani Vyapar ke numbers kitne taaza hain.
+    -- synced_at alag cheez hai: app ko data kab mila. Dono isliye ki pipeline ka
+    -- kaunsa hissa ruka hai wo pata chale.
+    select jsonb_agg(
+             jsonb_build_object(
+               'item_name',     t.item_name,
+               'current_stock', coalesce(t.stock_quantity_override, t.current_stock),
+               'is_active',     t.is_active,
+               'synced_at',     run_ts)
+             || case when has_src
+                     then jsonb_build_object('source_at', t.last_stock_update at time zone 'utc')
+                     else '{}'::jsonb end)
       into batch
       from (select * from public.vyapar_items
              order by item_name
@@ -112,7 +126,8 @@ begin
   insert into public.pbs_push_log (ran_at, rows_pushed, live, gone)
        values (run_at, total, live, gone);
 
-  return format('pushed %s rows | live %s | ab live nahi %s', total, live, gone);
+  return format('pushed %s rows | live %s | ab live nahi %s | source_at %s',
+                total, live, gone, case when has_src then 'bheja' else 'column nahi hai, chhoda' end);
 end;
 $fn$;
 

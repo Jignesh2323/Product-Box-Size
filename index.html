@@ -800,7 +800,9 @@ let vyaparLoaded = false;
 async function loadVyapar(force){
   if(vyaparLoaded && !force) return {};
   const [vi, li] = await Promise.all([
-    sb.from('pbs_vyapar_items').select('item_name, current_stock, is_active, is_discontinued, discontinued_manual, phase_out_date, synced_at').order('item_name'),
+    // '*' isliye, naam ginaa kar nahi: DB me nayi column aane par select
+    // fail ho jaata hai, aur poori app usi ek column par atak jaati hai.
+    sb.from('pbs_vyapar_items').select('*').order('item_name'),
     sb.from('pbs_links').select('id, product_id, pattern, is_prefix')
   ]);
   if(vi.error) return {error: vi.error};
@@ -827,12 +829,33 @@ function lastSyncedAt(){
   const v = vyaparCache.find(x => x.synced_at);
   return v ? new Date(v.synced_at) : null;
 }
-/* Stock roz subah 11 baje apne aap aata hai — Supabase ka cron job
-   push_vyapar_to_box_app. 30 ghanta isliye chuna: ek din chhoot jaaye
-   tabhi bolna hai, roz-roz timestamp chipkana nahi. */
-const SYNC_STALE_HOURS = 30;
+/* Do alag signal hain aur dono alag baat batate hain:
+     synced_at — app ko data kab mila (cron chal raha hai ya nahi)
+     source_at — Vyapar ke apne numbers kitne taaza hain
+   Leg 2 ruke to dono jam jaate hain; leg 1 ruke to sirf source_at.
+   Isliye pehle synced_at dekhte hain — wahi asli "kuch aa hi nahi raha" hai.
+   30 aur 36 ghanta isliye: cron 11 baje chalta hai, thoda late din maaf ho,
+   par jo din chala hi nahi wo pakda jaaye. Upar wali pull kabhi late bhi
+   hoti hai, isliye use thodi zyada chhoot. */
+const SYNC_STALE_HOURS   = 30;
+const SOURCE_STALE_HOURS = 36;
 function syncAge(){
   const at = lastSyncedAt();
+  return at ? {at, hours: (Date.now() - at.getTime()) / 36e5} : null;
+}
+/* source_at har item ka apna hai, to sabse naya hi pipeline ki umar hai.
+   Purani DB me ye column nahi hoti — tab null, aur ye check chup rehta hai. */
+function lastSourceAt(){
+  let best = null;
+  vyaparCache.forEach(v => {
+    if(!v.source_at) return;
+    const d = new Date(v.source_at);
+    if(!best || d > best) best = d;
+  });
+  return best;
+}
+function sourceAge(){
+  const at = lastSourceAt();
   return at ? {at, hours: (Date.now() - at.getTime()) / 36e5} : null;
 }
 function syncAgeText(h){
@@ -843,10 +866,21 @@ function syncAgeText(h){
 /* Sync ruk gayi to har tab par dikhta hai. Theek chal rahi ho to kuch nahi —
    sirf tab bolta hai jab kehne layak kuch ho. */
 function syncStaleNote(){
-  const s = vyaparLoaded ? syncAge() : null;
-  if(!s || s.hours <= SYNC_STALE_HOURS) return '';
-  return `<div class="msg warn">⚠️ <b>સ્ટોક જૂનો છે</b> — Vyapar માંથી છેલ્લે ${syncAgeText(s.hours)} આવ્યું `
-       + `(${esc(s.at.toLocaleString('en-IN'))}). રોજ સવારે 11 વાગ્યે અપડેટ થવું જોઈએ.</div>`;
+  if(!vyaparLoaded) return '';
+  const warn = (head, rest) => `<div class="msg warn">⚠️ <b>${head}</b> — ${rest}</div>`;
+  const s = syncAge();
+  if(s && s.hours > SYNC_STALE_HOURS){
+    return warn('સ્ટોક જૂનો છે',
+      `Vyapar માંથી છેલ્લે ${syncAgeText(s.hours)} આવ્યું (${esc(s.at.toLocaleString('en-IN'))}). `
+      + 'રોજ સવારે 11 વાગ્યે અપડેટ થવું જોઈએ.');
+  }
+  const src = sourceAge();
+  if(src && src.hours > SOURCE_STALE_HOURS){
+    return warn('Vyapar માંથી નવા આંકડા નથી આવતા',
+      `એપ સુધી ડેટા પહોંચે છે, પણ Vyapar ના આંકડા ${syncAgeText(src.hours)} ના છે `
+      + `(${esc(src.at.toLocaleString('en-IN'))}).`);
+  }
+  return '';
 }
 function linksFor(productId){ return linksCache.filter(l => l.product_id === productId); }
 /* Ek product ke peeche jitne Vyapar item hain, unki poori list.
@@ -2556,8 +2590,11 @@ async function renderSettingsTab(box){
       </p>
       ${(()=>{ const s = syncAge();
         if(!s) return '<div class="msg warn" style="margin:10px 0 0">હજી સુધી Vyapar માંથી સ્ટોક આવ્યો નથી.</div>';
-        return `<div class="msg ${s.hours > SYNC_STALE_HOURS ? 'warn' : 'ok'}" style="margin:10px 0 0">`
-             + `છેલ્લે આવ્યું: <b>${syncAgeText(s.hours)}</b> — ${esc(s.at.toLocaleString('en-IN'))}</div>`;
+        const src = sourceAge();
+        const row = (cls, label, a) => `<div class="msg ${cls}" style="margin:10px 0 0">`
+          + `${label}: <b>${syncAgeText(a.hours)}</b> — ${esc(a.at.toLocaleString('en-IN'))}</div>`;
+        return row(s.hours > SYNC_STALE_HOURS ? 'warn' : 'ok', 'એપ સુધી પહોંચ્યું', s)
+             + (src ? row(src.hours > SOURCE_STALE_HOURS ? 'warn' : 'ok', 'Vyapar ના આંકડા', src) : '');
       })()}
     </div>
     <div class="card">
@@ -2639,8 +2676,17 @@ const SETUP_SQL = [
 "  item_name text primary key,",
 "  current_stock integer,",
 "  is_active boolean not null default true,",
-"  synced_at timestamptz not null default now()",
+"  synced_at timestamptz not null default now(),",
+"  source_at timestamptz,",
+"  is_discontinued boolean not null default false,",
+"  discontinued_manual boolean not null default false,",
+"  phase_out_date date",
 ");",
+"-- Ye columns baad me aayi. Purani DB par dobara chalane se bhi kuch nahi bigadta.",
+"alter table public.pbs_vyapar_items add column if not exists source_at timestamptz;",
+"alter table public.pbs_vyapar_items add column if not exists is_discontinued boolean not null default false;",
+"alter table public.pbs_vyapar_items add column if not exists discontinued_manual boolean not null default false;",
+"alter table public.pbs_vyapar_items add column if not exists phase_out_date date;",
 "",
 "create table if not exists public.pbs_links (",
 "  id bigint generated always as identity primary key,",
