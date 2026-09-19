@@ -84,6 +84,7 @@
 :root[data-theme="dark"] .pill.unsold{background:var(--paper-dark);}
 :root[data-theme="dark"] .msg.error{background:#3A1414; border-color:#7A3838;}
 :root[data-theme="dark"] .msg.ok{background:#0F2E22; border-color:#2D6A4F;}
+:root[data-theme="dark"] .msg.warn{background:#3A2A0E; border-color:#7A5A1E;}
 :root[data-theme="dark"] .search-safe{background:#0F2E22 !important; border-color:#34D399 !important;}
 :root[data-theme="dark"] .search-safe::placeholder{color:#5FBE8A;}
 :root[data-theme="dark"] button.danger{background:#3A1414; border-color:#7A3838;}
@@ -265,6 +266,7 @@ tr:hover td{background:var(--paper-dark);}
 .msg{padding:10px 14px; border-radius:10px; margin-bottom:14px; font-size:13.5px;}
 .msg.error{background:#FEF2F2; border:1px solid #FCC; color:var(--danger);}
 .msg.ok{background:#ECFDF3; border:1px solid #BBF0D0; color:#15803D;}
+.msg.warn{background:#FFFBEB; border:1px solid #FDE68A; color:var(--warning);}
 .empty{color:var(--ink-soft); font-style:italic; padding:14px 0;}
 .pill{
   font-family:'Inter',sans-serif; font-weight:600; font-size:11.5px; padding:3px 10px; border-radius:999px;
@@ -824,6 +826,27 @@ async function loadVyapar(force){
 function lastSyncedAt(){
   const v = vyaparCache.find(x => x.synced_at);
   return v ? new Date(v.synced_at) : null;
+}
+/* Stock roz subah 11 baje apne aap aata hai — Supabase ka cron job
+   push_vyapar_to_box_app. 30 ghanta isliye chuna: ek din chhoot jaaye
+   tabhi bolna hai, roz-roz timestamp chipkana nahi. */
+const SYNC_STALE_HOURS = 30;
+function syncAge(){
+  const at = lastSyncedAt();
+  return at ? {at, hours: (Date.now() - at.getTime()) / 36e5} : null;
+}
+function syncAgeText(h){
+  if(h < 1)  return 'હમણાં જ';
+  if(h < 24) return Math.round(h) + ' કલાક પહેલાં';
+  return Math.round(h / 24) + ' દિવસ પહેલાં';
+}
+/* Sync ruk gayi to har tab par dikhta hai. Theek chal rahi ho to kuch nahi —
+   sirf tab bolta hai jab kehne layak kuch ho. */
+function syncStaleNote(){
+  const s = vyaparLoaded ? syncAge() : null;
+  if(!s || s.hours <= SYNC_STALE_HOURS) return '';
+  return `<div class="msg warn">⚠️ <b>સ્ટોક જૂનો છે</b> — Vyapar માંથી છેલ્લે ${syncAgeText(s.hours)} આવ્યું `
+       + `(${esc(s.at.toLocaleString('en-IN'))}). રોજ સવારે 11 વાગ્યે અપડેટ થવું જોઈએ.</div>`;
 }
 function linksFor(productId){ return linksCache.filter(l => l.product_id === productId); }
 /* Ek product ke peeche jitne Vyapar item hain, unki poori list.
@@ -1451,6 +1474,7 @@ async function render(){
   const onSecondary = !wide && HIDDEN_TAB_KEYS.includes(state.tab);
   root.innerHTML = `<div class="app">
     ${topbar()}
+    ${syncStaleNote()}
     <div id="tab-content"><div class="empty">Loading…</div></div>
   </div>
   <nav class="bottom-nav">
@@ -2133,7 +2157,7 @@ async function renderVyaparTab(box){
         <div class="stat stat-info"><div class="num">${vyaparLive.length}</div><div class="lbl">લાઇવ Vyapar item</div></div>
       </div>
       <p class="config-note" style="margin:12px 0 0">
-        ${synced ? '📅 Vyapar માંથી છેલ્લે લીધેલું: <b>' + esc(synced.toLocaleString('en-IN')) + '</b>. આ હજી જાતે અપડેટ થતું નથી — AVEDIA PC થી sync જોડવાનું બાકી છે.'
+        ${synced ? '📅 Vyapar માંથી છેલ્લે લીધેલું: <b>' + esc(synced.toLocaleString('en-IN')) + '</b> (' + syncAgeText(syncAge().hours) + '). રોજ સવારે 11 વાગ્યે જાતે અપડેટ થાય છે.'
                  : 'હજી સુધી Vyapar માંથી સ્ટોક આવ્યો નથી.'}
       </p>
     </div>
@@ -2526,6 +2550,17 @@ async function renderSettingsTab(box){
       </div>
     </div>
     <div class="card">
+      <h3>🔄 Vyapar Sync</h3>
+      <p class="config-note" style="margin-top:-4px">
+        સ્ટોક રોજ સવારે 11 વાગ્યે Vyapar માંથી જાતે આવી જાય છે — કંઈ કરવાનું નથી.
+      </p>
+      ${(()=>{ const s = syncAge();
+        if(!s) return '<div class="msg warn" style="margin:10px 0 0">હજી સુધી Vyapar માંથી સ્ટોક આવ્યો નથી.</div>';
+        return `<div class="msg ${s.hours > SYNC_STALE_HOURS ? 'warn' : 'ok'}" style="margin:10px 0 0">`
+             + `છેલ્લે આવ્યું: <b>${syncAgeText(s.hours)}</b> — ${esc(s.at.toLocaleString('en-IN'))}</div>`;
+      })()}
+    </div>
+    <div class="card">
       <h3>📤 Export</h3>
       <p class="config-note" style="margin-top:-4px">આખી યાદી એક CSV ફાઇલમાં — Excel માં ખૂલી શકે છે.</p>
       <button onclick="exportCSV()" style="width:100%">⬇️ Download CSV</button>
@@ -2599,7 +2634,7 @@ const SETUP_SQL = [
 "  sort_order integer not null default 0",
 ");",
 "",
-"-- Vyapar ka stock (AVEDIA PC se sync hota hai) aur uska product se rishta",
+"-- Vyapar ka stock (roz 11 AM par cron se aata hai) aur uska product se rishta",
 "create table if not exists public.pbs_vyapar_items (",
 "  item_name text primary key,",
 "  current_stock integer,",
