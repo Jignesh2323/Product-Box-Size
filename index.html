@@ -591,6 +591,31 @@ a{color:var(--maroon);}
 }
 .bs-item .bs-name{flex:1; min-width:0; word-break:break-word;}
 .bs-item .bs-wt{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:12.5px; color:var(--ink-soft);}
+/* ---- Baaki tabs ko wahi ilaaj jo Search/Products ko mila ----
+   Text ek size upar (13.5 → 15), aur PC par jo list "naam baaein, number
+   daaein, beech me 1200px maidan" thi wo jaali me: Box Size ke andar ke
+   item chip ban kar 3-4 column me, Vyapar Stock ke product card 2-4 column
+   me, stat ke dabbe row baant kar. Bags ki table aur Deleted ki row pehle
+   se poori chaudai leti hain — wahan sirf text bada. */
+.bs-dim{font-size:18px;}
+.bs-item{font-size:15px;}
+.bs-item .bs-wt{font-size:14.5px; color:var(--ink);}
+table{font-size:14.5px;}
+.flat-entry{font-size:15px;}
+.stat .num{font-size:24px;}
+.stat .lbl{font-size:12px;}
+@media (min-width:900px){
+  .bs-body{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+    gap:8px; padding:6px 16px 14px;
+  }
+  .bs-item{border-top:none; background:var(--paper-dark); border-radius:10px; padding:9px 13px;}
+  .bs-item .bs-wt{margin-left:auto;}
+  #vyapar-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(440px, 1fr)); gap:10px; align-items:start;}
+  #vyapar-list > .result-count, #vyapar-list > .card:only-child{grid-column:1 / -1;}
+  #vyapar-list .card{margin:0;}
+  .grid-stats .stat{flex:1 1 0; text-align:center;}
+}
 
 /* ---- Vyapar stock ---- */
 .stock-line{
@@ -696,7 +721,7 @@ a{color:var(--maroon);}
   display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   padding:11px 13px; border-radius:var(--radius-sm); background:var(--paper-dark); margin-top:8px;
 }
-.link-row .lr-name{flex:1; min-width:140px; font-weight:600; font-size:14px; word-break:break-word;}
+.link-row .lr-name{flex:1; min-width:140px; font-weight:600; font-size:15.5px; word-break:break-word;}
 .link-row button{min-height:34px; padding:5px 12px; font-size:12.5px;}
 .link-pick{margin-top:8px;}
 .link-hit{
