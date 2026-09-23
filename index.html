@@ -737,7 +737,7 @@ table{font-size:14.5px;}
 
 /* ---- Segmented switch: the Search tab's two ways of asking ---- */
 .segmented{
-  display:flex; gap:4px; padding:4px; margin-bottom:14px;
+  display:flex; flex-wrap:wrap; gap:4px; padding:4px; margin-bottom:14px;
   background:var(--paper-dark); border-radius:14px;
 }
 .segmented button{
@@ -1479,6 +1479,20 @@ function productCardHtml(p, opts){
       </div>` : ''}
   </div>`;
 }
+/* Stock box ka rang ek hi jagah tay ho — box bhi yahi poochta hai aur Products
+   ka "Stock છે / Low stock" filter bhi, warna dono kabhi alag jawab denge.
+   'nolink' = Vyapar se juda nahi ya sirf band item: na hara na laal, isliye
+   dono filter me nahi ginta. */
+function stockClass(p){
+  const rows = vyaparRowsFor(p.id);
+  const disc = isDiscontinued(p.id);
+  if(!rows.length) return disc ? 'disc' : 'nolink';
+  const total = stockFor(p.id);
+  const neg = rows.filter(v => !v.is_discontinued).some(v => (num(v.current_stock) || 0) < 0);
+  const low = !disc && total !== null && total < LOW_STOCK_AT && total >= 0;
+  const lowParts = rows.length > 1 ? rows.filter(v => !v.is_discontinued && isLowQty(num(v.current_stock) || 0)) : [];
+  return disc ? 'disc' : (neg ? 'neg' : ((low || lowParts.length) ? 'low' : (total > 0 ? '' : 'zero')));
+}
 function stockLineHtml(p){
   const rows = vyaparRowsFor(p.id);
   const ghosts = ghostRowsFor(p.id);
@@ -1544,7 +1558,7 @@ function stockLineHtml(p){
   const sub = shown.length > 1
     ? `${shown.length} item${hiddenDisc ? ' · ' + hiddenDisc + ' discontinued' : ''} ▾`
     : (neg ? 'માઇનસ ▾' : (hiddenDisc ? hiddenDisc + ' discontinued ▾' : 'Vyapar'));
-  const cls = disc ? 'disc' : (neg ? 'neg' : ((low || lowParts.length) ? 'low' : (total > 0 ? '' : 'zero')));
+  const cls = stockClass(p);
   return `<div class="stock-line ${cls}" onclick="toggleStockParts(${p.id})">
       <span class="lbl-icon">${disc ? '⛔' : ((low || lowParts.length) ? '⚠️' : '📊')}</span>
       <span class="st-qty">${fmtQty(total)}</span>
@@ -1935,6 +1949,8 @@ async function renderProductsTab(box){
       <div class="segmented" style="margin-bottom:10px">
         <button id="pf-all"  class="${productFilter==='all'?'on':''}"  onclick="setProductFilter('all')">બધી</button>
         <button id="pf-live" class="${productFilter==='live'?'on':''}" onclick="setProductFilter('live')">✅ Continue</button>
+        <button id="pf-instock" class="${productFilter==='instock'?'on':''}" onclick="setProductFilter('instock')">🟢 Stock છે</button>
+        <button id="pf-low" class="${productFilter==='low'?'on':''}" onclick="setProductFilter('low')">🔴 Low stock</button>
         <button id="pf-disc" class="${productFilter==='disc'?'on':''}" onclick="setProductFilter('disc')">⛔ Discontinued</button>
       </div>
       <div class="big-search">
@@ -2007,16 +2023,22 @@ function paintProductsList(){
     if(p.id === editingProductId) return true;
     if(productFilter === 'live' &&  isDiscontinued(p.id)) return false;
     if(productFilter === 'disc' && !isDiscontinued(p.id)) return false;
+    // Excel jaisa: hara wale alag, laal (low ya minus) wale alag.
+    if(productFilter === 'instock' && stockClass(p) !== '') return false;
+    if(productFilter === 'low' && !['low','neg'].includes(stockClass(p))) return false;
     return !t || matchProduct(p,t);
   });
-  // Filter button par ginti — kul, chalu, discontinued — har paint par taaza.
+  // Filter button par ginti — kul, chalu, stock, low, discontinued — har paint par taaza.
   // Do ginti: product, aur unke peeche ke Vyapar variation (jaise CDSA ke 16).
   const variations = p => vyaparRowsFor(p.id, true).length;
   const grp = (pred) => { const ps = productsCache.filter(pred); return [ps.length, ps.reduce((s,p)=>s+variations(p),0)]; };
   const all  = grp(()=>true), live = grp(p=>!isDiscontinued(p.id)), disc = grp(p=>isDiscontinued(p.id));
+  const instock = grp(p=>stockClass(p)===''), lowc = grp(p=>['low','neg'].includes(stockClass(p)));
   const setLbl = (id, title, c) => { const b = document.getElementById(id); if(b) b.innerHTML = esc(title) + '<small>' + c[0] + ' પ્રોડક્ટ · ' + c[1] + ' variation</small>'; };
   setLbl('pf-all',  'બધી', all);
   setLbl('pf-live', '✅ Continue', live);
+  setLbl('pf-instock', '🟢 Stock છે', instock);
+  setLbl('pf-low', '🔴 Low stock', lowc);
   setLbl('pf-disc', '⛔ Discontinued', disc);
   const editing = editingProductId ? productsCache.find(p=>p.id===editingProductId) : null;
   wrap.innerHTML = `<p class="result-count">${productsCache.length} માંથી ${list.length} પ્રોડક્ટ</p>` +
