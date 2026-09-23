@@ -366,7 +366,8 @@ a{color:var(--maroon);}
      Dabbe (unit weight, box) apne text jitne hi hain — pehle flex:2 se
      khinch kar poori chaudai le lete the aur "0.84 kg" ke daaein 600px
      khaali maidan reh jaata tha. Ab naam ka khaana ek tay chaudai leta
-     hai, dabbe uske turant baad, aur bachi jagah daaein khaali. */
+     hai, dabbe uske turant baad. Products me bachi jagah daaein khaali;
+     Search me chaar dabbe use baant lete hain (neeche dekho). */
   #products-list .prod-card, #search-results .prod-card{
     display:flex; align-items:center; gap:12px;
     padding:12px 16px; margin-bottom:10px; overflow:hidden;
@@ -380,8 +381,8 @@ a{color:var(--maroon);}
   }
   #products-list .spec-grid, #search-results .spec-grid{display:flex; gap:6px; margin:0; flex:0 1 auto; min-width:0;}
   #products-list .spec, #search-results .spec{flex:0 1 auto; min-width:0; width:auto; padding:8px 9px;}
-  #products-list .spec .v, #search-results .spec .v{font-size:13.5px;}
-  #products-list .spec .k, #search-results .spec .k{font-size:9.5px;}
+  #products-list .spec .v, #search-results .spec .v{font-size:16px;}
+  #products-list .spec .k, #search-results .spec .k{font-size:10.5px;}
   /* Box aur stock ek doosre ke bagal me — stock box ke neeche nahi jaata.
      Kai box waale product me box apas me neeche neeche lagte hain aur stock
      unke bagal me apni jagah par khada rehta hai. */
@@ -399,6 +400,15 @@ a{color:var(--maroon);}
   /* Weight ko daaein kinare mat dhakelo — tang jagah me wo wrap hokar doosri
      line par chala jaata tha. Unit ke turant baad chalne do. */
   #products-list .box-line .bx-wt, #search-results .box-line .bx-wt{margin-left:6px;}
+  /* Search: naam ke baad chaar dabbe — unit weight, box dimension, unit in
+     box, box weight — row ko barabar baant lete hain, daaein kuch nahi
+     bachta. Products tab ke dabbe text jitne hi rehte hain: wahan stock aur
+     Edit/Delete bhi row me hain, unhe jagah chahiye. */
+  #search-results .spec-grid{flex:1 1 0;}
+  #search-results .spec-grid .spec{flex:1 1 0;}
+  #search-results .box-col{flex:3 1 0;}
+  #search-results .box-stack{flex:1 1 auto; width:100%;}
+  #search-results .box-line.cells .spec{flex:1 1 0;}
   #products-list .stock-wrap, #search-results .stock-wrap{flex:0 0 152px; width:152px;}
   #products-list .stock-line, #search-results .stock-line{padding:8px 9px;}
   #products-list .stock-line .st-sub{display:none;}
@@ -475,8 +485,8 @@ a{color:var(--maroon);}
   background:var(--paper-dark); border-radius:var(--radius-sm); padding:9px 11px;
   border:1px solid rgba(20,22,43,.03);
 }
-.spec .k{font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft);}
-.spec .v{font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700; color:var(--ink); margin-top:2px; word-break:break-all;}
+.spec .k{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft);}
+.spec .v{font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:700; color:var(--ink); margin-top:2px; word-break:break-all;}
 .spec .v.dim{color:#1D4ED8;}
 .spec .v.calc{color:var(--maroon);}
 :root[data-theme="dark"] .spec .v.dim{color:#7DA6FF;}
@@ -514,6 +524,30 @@ a{color:var(--maroon);}
   width:fit-content; max-width:100%;
 }
 :root[data-theme="dark"] .box-line{background:#2A2117; border-color:#4A3A28;}
+/* Search ke box-dabbe: box-line ka apna rang/border hat jaata hai, andar ke
+   teen labeled dabbe orange parivaar me — wahi rang jo pehle poori patti ka
+   tha, ab har cheez ke apne khaane par. */
+.box-line.cells{background:none; border:none; padding:0; gap:8px; align-items:stretch;}
+.box-line.cells .spec{flex:1 1 110px; min-width:0;}
+.box-line.cells .box-index{align-self:center;}
+/* Chaar dabbe, chaar rang — aankh label padhe bina hi jaan le kaunsa kya hai:
+   unit weight neela (upar spec-uw), box dimension orange, unit in box hara,
+   box weight indigo. Sab app ke maujooda rangon se. */
+.spec-bdim{background:#FFF7ED; border-color:#F3D9BC;}
+.spec-bdim .k{color:#B45309;}
+.spec-bdim .v{color:#B45309;}
+.spec-bunit{background:#ECFDF3; border-color:#BBF0D0;}
+.spec-bunit .k{color:#15803D;}
+.spec-bunit .v{color:#15803D;}
+.spec-bwt{background:#EEF2FF; border-color:#C7D2FE;}
+.spec-bwt .k{color:var(--maroon);}
+.spec-bwt .v{color:var(--maroon);}
+:root[data-theme="dark"] .spec-bdim{background:#2A2117; border-color:#4A3A28;}
+:root[data-theme="dark"] .spec-bdim .k, :root[data-theme="dark"] .spec-bdim .v{color:#FDBA74;}
+:root[data-theme="dark"] .spec-bunit{background:#0F2E22; border-color:#2D6A4F;}
+:root[data-theme="dark"] .spec-bunit .k, :root[data-theme="dark"] .spec-bunit .v{color:#34D399;}
+:root[data-theme="dark"] .spec-bwt{background:#232349; border-color:#3D3A7A;}
+:root[data-theme="dark"] .spec-bwt .k, :root[data-theme="dark"] .spec-bwt .v{color:#A5A0FF;}
 .box-line .bx-dim{font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15.5px; color:#B45309;}
 :root[data-theme="dark"] .box-line .bx-dim{color:#FBBF24;}
 .box-line .bx-sep{color:var(--ink-soft); font-size:12px;}
@@ -565,6 +599,23 @@ a{color:var(--maroon);}
   .spec-stock .stock-line{margin:0; flex:1; align-items:center;}
   .spec-stock .stock-line .st-sub{margin-left:auto;}
   .spec-grid > .spec-parts{flex-basis:100%; margin:0 0 0 6px;}
+  /* Phone: Search ke chaar dabbe 2×2 — Unit Weight | Box Dimension, phir
+     Unit in Box | Box Weight. Beech ke wrapper (spec-grid, box-col,
+     box-stack, box-line) display:contents se ghul jaate hain taaki chaaron
+     ek hi flex-wrap me aayen; warna akela unit weight apni line par aadhi
+     jagah khaali chhod deta tha. Kai box wale product me index badge
+     "Box 1" / "Box 2" ki poori line ban jaata hai, taaki pata rahe kaunse
+     teen dabbe kis box ke hain. */
+  #search-results .prod-card{display:flex; flex-wrap:wrap; align-items:stretch; gap:8px;}
+  #search-results .prod-card h3{flex:1 1 100%; margin:0 0 2px;}
+  #search-results .spec-grid, #search-results .box-col, #search-results .box-stack,
+  #search-results .box-line.cells{display:contents;}
+  #search-results .spec{flex:1 1 40%; min-width:0;}
+  #search-results .box-line.cells .box-index{
+    flex:0 0 100%; display:flex; align-items:center; justify-content:flex-start; width:auto; height:auto; min-width:0;
+    border-radius:8px; padding:3px 10px; font-size:11px; font-weight:800; margin-top:4px;
+  }
+  #search-results .box-line.cells .box-index::before{content:'Box#search-results .box-line.cells .box-index::before{content:'Box ';}0a0';}
 }
 .stock-part{
   display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12.5px;
@@ -1355,7 +1406,16 @@ function productCardHtml(p, opts){
     </div>
     <div class="box-col">
       <div class="box-stack">
-        ${boxes.length ? boxes.map((b,i)=>`<div class="box-line">
+        ${boxes.length ? boxes.map((b,i)=> opts.boxCells
+          /* Search: box ki har cheez apna labeled dabba — Unit Weight jaisa.
+             Unit weight ke saath mila kar chaar, row ko baant lete hain. */
+          ? `<div class="box-line cells">
+            ${boxes.length > 1 ? `<span class="box-index">${i+1}</span>` : ''}
+            ${specHtml('Box Dimension', b.box_dimension, '', 'spec-bdim')}
+            ${specHtml('Unit in Box', b.unit_in_box == null ? '' : b.unit_in_box, '', 'spec-bunit')}
+            ${specHtml('Box Weight', kg(boxWeight(p,b)), '', 'spec-bwt')}
+          </div>`
+          : `<div class="box-line">
             ${boxes.length > 1 ? `<span class="box-index">${i+1}</span>` : '<span class="lbl-icon">📦</span>'}
             <span class="bx-dim">${b.box_dimension ? esc(b.box_dimension) : '—'}</span>
             <span class="bx-sep">×</span>
@@ -1666,7 +1726,7 @@ function paintSearchResults(){
   const hits = productsCache.filter(p => matchProduct(p, t));
   wrap.innerHTML = hits.length
     ? `<p class="result-count">${hits.length} result${hits.length>1?'s':''}</p>` +
-      hits.map(p=>productCardHtml(p, {term: searchTerm.trim(), itemDims:false})).join('')
+      hits.map(p=>productCardHtml(p, {term: searchTerm.trim(), itemDims:false, boxCells:true})).join('')
     : `<div class="card"><p class="empty">"${esc(searchTerm)}" નામની કોઈ પ્રોડક્ટ મળી નથી.</p></div>`;
 }
 
