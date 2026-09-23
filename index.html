@@ -603,6 +603,12 @@ a{color:var(--maroon);}
 :root[data-theme="dark"] .stock-line .st-qty{color:#34D399;}
 .stock-line.zero{background:var(--paper-dark); border-color:var(--rule);}
 .stock-line.zero .st-qty{color:var(--ink-soft);}
+/* Dark me upar ka generic .stock-line (hara) in dono se zyada specific hai, to
+   discontinued aur band item bhi hare dikh jaate the — jaise stock ho. Wahi
+   tokens, dark prefix ke saath, taaki grey grey hi rahe. */
+:root[data-theme="dark"] .stock-line.zero, :root[data-theme="dark"] .stock-line.disc{background:var(--paper-dark); border-color:var(--rule);}
+:root[data-theme="dark"] .stock-line.zero .st-qty{color:var(--ink-soft);}
+:root[data-theme="dark"] .stock-line.disc .st-qty{color:var(--ink);}
 .stock-line .st-sub{font-size:11.5px; color:var(--ink-soft); margin-left:auto;}
 .stock-parts{margin:6px 0 0 6px; padding-left:10px; border-left:2px solid var(--rule);}
 /* Phone: stock ka dabba spec ki patti me baaki dabbon ke bagal, line ki bachi
@@ -648,13 +654,15 @@ a{color:var(--maroon);}
 .sp-qty.minus, .stock-line.neg .st-qty{color:var(--danger) !important;}
 .stock-line.neg{background:#FEF2F2; border-color:#FECACA;}
 :root[data-theme="dark"] .stock-line.neg{background:#3A1414; border-color:#7A3838;}
-/* Kam stock (10 se neeche): amber. Discontinued: slate, kata hua sa. */
-.stock-line.low{background:#FFFBEB; border-color:#FDE68A;}
-.stock-line.low .st-qty{color:#B45309;}
-:root[data-theme="dark"] .stock-line.low{background:#3A2A0E; border-color:#7A5A1A;}
-:root[data-theme="dark"] .stock-line.low .st-qty{color:#FBBF24;}
-.stock-part.lowpart{background:#FFFBEB; margin:0 -6px; padding-left:6px; padding-right:6px; border-radius:8px;}
-:root[data-theme="dark"] .stock-part.lowpart{background:#3A2A0E;}
+/* Kam stock (LOW_STOCK_AT se neeche): laal, minus jaisa — bell jise ginta hai wahi
+   box par bhi laal dikhe, amber "thoda kam" jaisa padhta tha. Stock hai to hara.
+   Discontinued: slate, kata hua sa. */
+.stock-line.low{background:#FEF2F2; border-color:#FECACA;}
+.stock-line.low .st-qty{color:var(--danger);}
+:root[data-theme="dark"] .stock-line.low{background:#3A1414; border-color:#7A3838;}
+:root[data-theme="dark"] .stock-line.low .st-qty{color:#F87171;}
+.stock-part.lowpart{background:#FEF2F2; margin:0 -6px; padding-left:6px; padding-right:6px; border-radius:8px;}
+:root[data-theme="dark"] .stock-part.lowpart{background:#3A1414;}
 .sp-qty.lowq{color:#B45309;}
 :root[data-theme="dark"] .sp-qty.lowq{color:#FBBF24;}
 .disc-check{
