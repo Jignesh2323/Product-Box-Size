@@ -366,8 +366,8 @@ a{color:var(--maroon);}
      Dabbe (unit weight, box) apne text jitne hi hain — pehle flex:2 se
      khinch kar poori chaudai le lete the aur "0.84 kg" ke daaein 600px
      khaali maidan reh jaata tha. Ab naam ka khaana ek tay chaudai leta
-     hai, dabbe uske turant baad. Products me bachi jagah daaein khaali;
-     Search me chaar dabbe use baant lete hain (neeche dekho). */
+     hai, dabbe uske turant baad aur bachi row baant lete hain — Search me
+     chaar, Products me chhe (+ stock 152px, Edit/Delete aakhir me). */
   #products-list .prod-card, #search-results .prod-card{
     display:flex; align-items:center; gap:12px;
     padding:12px 16px; margin-bottom:10px; overflow:hidden;
@@ -379,20 +379,20 @@ a{color:var(--maroon);}
   #products-list .prod-card h3, #search-results .prod-card h3{
     flex:0 1 320px; min-width:130px; margin:0; font-size:15px; gap:9px;
   }
-  #products-list .spec-grid, #search-results .spec-grid{display:flex; gap:6px; margin:0; flex:0 1 auto; min-width:0;}
-  #products-list .spec, #search-results .spec{flex:0 1 auto; min-width:0; width:auto; padding:8px 9px;}
+  #products-list .spec-grid, #search-results .spec-grid{display:flex; gap:6px; margin:0; flex:3 1 0; min-width:0;}
+  #products-list .spec, #search-results .spec{flex:1 1 0; min-width:0; width:auto; padding:8px 9px;}
   #products-list .spec .v, #search-results .spec .v{font-size:16px;}
   #products-list .spec .k, #search-results .spec .k{font-size:10.5px;}
   /* Box aur stock ek doosre ke bagal me — stock box ke neeche nahi jaata.
      Kai box waale product me box apas me neeche neeche lagte hain aur stock
      unke bagal me apni jagah par khada rehta hai. */
   #products-list .box-col, #search-results .box-col{
-    flex:0 1 auto; min-width:0; display:flex; align-items:center; gap:8px;
+    flex:3 1 0; min-width:0; display:flex; align-items:center; gap:8px;
   }
   /* Teen box waale product me stock ka dabba upar chipka rehta tha; ab box
      ke dher ke beech me — poori row ki tarah. Dher apne sabse chaude box
      jitna; usse chhote box usi chaudai tak bhar jaate hain, seedhi patti. */
-  #products-list .box-stack, #search-results .box-stack{flex:0 1 auto; min-width:0;}
+  #products-list .box-stack, #search-results .box-stack{flex:1 1 auto; min-width:0;}
   /* Box ki patti ko rok do, warna "14.24 kg" khisak kar row ke doosre chhor
      par chala jaata hai aur beech me khaali maidan reh jaata. */
   #products-list .box-line, #search-results .box-line{margin:0; width:auto;}
@@ -402,13 +402,22 @@ a{color:var(--maroon);}
   #products-list .box-line .bx-wt, #search-results .box-line .bx-wt{margin-left:6px;}
   /* Search: naam ke baad chaar dabbe — unit weight, box dimension, unit in
      box, box weight — row ko barabar baant lete hain, daaein kuch nahi
-     bachta. Products tab ke dabbe text jitne hi rehte hain: wahan stock aur
-     Edit/Delete bhi row me hain, unhe jagah chahiye. */
+     bachta. Products me bhi wahi: teen spec + teen box dabbe, stock apni
+     152px par, Edit/Delete aakhir me. Tang laptop par cells wrap ho jaate hain. */
   #search-results .spec-grid{flex:1 1 0;}
   #search-results .spec-grid .spec{flex:1 1 0;}
   #search-results .box-col{flex:3 1 0;}
   #search-results .box-stack{flex:1 1 auto; width:100%;}
   #search-results .box-line.cells .spec{flex:1 1 0;}
+  /* 1280 ke laptop par naam 320 + chhe dabbe + stock + Edit ek line me nahi
+     aate — cells 57px tak sikud kar label tod dete the. Yahan naam chhota
+     (200px) aur dabbon ko ek minimum de kar wrap hone do: row thodi oonchi
+     ho jaati hai, par koi shabd nahi tootta. 1500+ par sab ek line me. */
+  @media (max-width:1499px){
+    #products-list .prod-card h3{flex-basis:200px;}
+    #products-list .spec-grid .spec{flex:1 1 96px;}
+    #products-list .box-line.cells .spec{flex:1 1 110px;}
+  }
   #products-list .stock-wrap, #search-results .stock-wrap{flex:0 0 152px; width:152px;}
   #products-list .stock-line, #search-results .stock-line{padding:8px 9px;}
   #products-list .stock-line .st-sub{display:none;}
@@ -532,7 +541,8 @@ a{color:var(--maroon);}
 .box-line.cells .box-index{align-self:center;}
 /* Search ke dabbe chaude hain (row baant lete hain), to label aur value
    beech me — baaein chipke huye text ke daaein aadha dabba khaali lagta tha. */
-#search-results .spec{text-align:center;}
+#products-list .spec, #search-results .spec{text-align:center;}
+.spec-stock{text-align:left;}
 /* Chaar dabbe, chaar rang — aankh label padhe bina hi jaan le kaunsa kya hai:
    unit weight neela (upar spec-uw), box dimension orange, unit in box hara,
    box weight indigo. Sab app ke maujooda rangon se. */
@@ -1410,7 +1420,7 @@ function productCardHtml(p, opts){
     <div class="box-col">
       <div class="box-stack">
         ${boxes.length ? boxes.map((b,i)=> opts.boxCells
-          /* Search: box ki har cheez apna labeled dabba — Unit Weight jaisa.
+          /* Search aur Products: box ki har cheez apna labeled dabba — Unit Weight jaisa.
              Unit weight ke saath mila kar chaar, row ko baant lete hain. */
           ? `<div class="box-line cells">
             ${boxes.length > 1 ? `<span class="box-index">${i+1}</span>` : ''}
@@ -1980,7 +1990,7 @@ function paintProductsList(){
     (list.length
       ? list.map(p => p.id === editingProductId
           ? `<div class="card edit-inline"><h3>✏️ ${esc(p.name)}</h3>${productFormHtml(editing)}</div>`
-          : productCardHtml(p, {editable: unlocked(), term: t, stock: true})).join('')
+          : productCardHtml(p, {editable: unlocked(), term: t, stock: true, boxCells: true})).join('')
       : '<div class="card"><p class="empty">કોઈ પ્રોડક્ટ મળી નથી.</p></div>');
   if(editing){ renderBoxEditor(); renderImagePicker(); }
   relocateStockForMobile(wrap);
