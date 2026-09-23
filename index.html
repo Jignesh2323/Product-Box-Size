@@ -1634,12 +1634,11 @@ function paintBoxPanel(panel){
 }
 function matchProduct(p, t){
   if(!t) return false;
-  // Note field yahan jaan-boojh kar nahi hai — "van" jaisa search "9V Battery
-  // Nakhvani" ke note se match ho jaata tha aur bilkul alag product bhi
-  // result me aa jaate the. Search sirf naam aur dimension se hi honi chahiye.
-  const hay = [p.name, p.item_dimension, p.item_box_dimension]
-    .concat((p.pbs_boxes||[]).map(b=>b.box_dimension));
-  return hay.some(v => v && String(v).toLowerCase().includes(t));
+  // Sirf naam. Dimension yahan se hataya — "40" likhne par 37x40x42 wale 27
+  // product aa jaate the jinke naam me 40 kahin nahi tha. Size se dhoondhna ho
+  // to Box Size tab hai, wo usi ke liye bana hai. Note pehle hi nikal chuka
+  // tha, isi wajah se: "van" note ke andar se match ho jaata tha.
+  return !!p.name && p.name.toLowerCase().includes(t);
 }
 function paintSearchResults(){
   const wrap = document.getElementById('search-results');
