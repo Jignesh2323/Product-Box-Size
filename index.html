@@ -804,11 +804,33 @@ table{font-size:14.5px;}
 :root[data-theme="dark"] .mix-row .mix-qty{color:#34D399;}
 .mix-row .mx-del{flex:0 0 auto;}
 .add-hit .ah-name{font-size:15.5px;}
+/* Search/Mix me Vyapar ka live stock — Products wale box jaise rang. */
+.spec-stockpill{display:flex; flex-direction:column; align-items:center; justify-content:center; background:#ECFDF3; border-color:#BBF0D0;}
+.spec-stockpill .k{color:#15803D;} .spec-stockpill .v{color:#15803D;}
+.spec-stockpill.low, .spec-stockpill.neg{background:#FEF2F2; border-color:#FECACA;}
+.spec-stockpill.low .k, .spec-stockpill.low .v, .spec-stockpill.neg .k, .spec-stockpill.neg .v{color:var(--danger);}
+.spec-stockpill.zero, .spec-stockpill.disc{background:var(--paper-dark); border-color:var(--rule);}
+.spec-stockpill.zero .k, .spec-stockpill.zero .v, .spec-stockpill.disc .k, .spec-stockpill.disc .v{color:var(--ink-soft);}
+:root[data-theme="dark"] .spec-stockpill{background:#0F2E22; border-color:#2D6A4F;}
+:root[data-theme="dark"] .spec-stockpill .k, :root[data-theme="dark"] .spec-stockpill .v{color:#34D399;}
+:root[data-theme="dark"] .spec-stockpill.low, :root[data-theme="dark"] .spec-stockpill.neg{background:#3A1414; border-color:#7A3838;}
+:root[data-theme="dark"] .spec-stockpill.low .k, :root[data-theme="dark"] .spec-stockpill.low .v, :root[data-theme="dark"] .spec-stockpill.neg .k, :root[data-theme="dark"] .spec-stockpill.neg .v{color:#F87171;}
+:root[data-theme="dark"] .spec-stockpill.zero, :root[data-theme="dark"] .spec-stockpill.disc{background:var(--paper-dark); border-color:var(--rule);}
+:root[data-theme="dark"] .spec-stockpill.zero .k, :root[data-theme="dark"] .spec-stockpill.zero .v, :root[data-theme="dark"] .spec-stockpill.disc .k, :root[data-theme="dark"] .spec-stockpill.disc .v{color:var(--ink-soft);}
+.add-hit .spec-stockpill{flex:0 0 auto; padding:6px 12px; margin-left:auto;}
+.add-hit .spec-stockpill .v{font-size:15px;}
+.add-hit button{margin-left:0;}
 @media (max-width:899px){
   /* Phone: naam aur ✕ pehli line par, teen dabbe neeche ek line me. */
   .mix-row .mx-name{flex-basis:calc(100% - 44px); order:1;}
   .mix-row .mx-del{order:2;}
   .mix-row .spec{order:3;}
+  /* "+ Add" list: naam poori pehli line par, stock pill aur button neeche —
+     warna naam 70px me sikud kar teen line ban jaata tha. */
+  .add-hit{flex-wrap:wrap;}
+  .add-hit .ah-name{flex:1 1 100%;}
+  .add-hit .spec-stockpill{margin-left:0;}
+  .add-hit button, .add-hit .pill{margin-left:auto;}
 }
 @media (min-width:900px){
   /* 760px ka beech wala panel teen dabbon ke liye tang tha; 1100 par naam ko
@@ -1523,6 +1545,16 @@ function stockClass(p){
   const lowParts = rows.length > 1 ? rows.filter(v => !v.is_discontinued && isLowQty(num(v.current_stock) || 0)) : [];
   return disc ? 'disc' : (neg ? 'neg' : ((low || lowParts.length) ? 'low' : (total > 0 ? '' : 'zero')));
 }
+/* Chhota stock dabba — Mix ki list aur row ke liye, jahan poora stock-line
+   (breakdown, tag, tap-to-open) bahut bhaari padta. Rang wahi stockClass()
+   se, taaki Products ke box se kabhi alag na bole. */
+function stockPillHtml(p){
+  const cls = stockClass(p);
+  if(cls === 'nolink') return '';
+  const total = stockFor(p.id);
+  const icon = cls === 'disc' ? '⛔' : ((cls === 'low' || cls === 'neg') ? '⚠️' : '📊');
+  return `<span class="spec spec-stockpill ${cls}"><span class="k">Vyapar Stock</span><span class="v">${icon} ${fmtQty(total)}</span></span>`;
+}
 function stockLineHtml(p){
   const rows = vyaparRowsFor(p.id);
   const ghosts = ghostRowsFor(p.id);
@@ -1816,7 +1848,7 @@ function paintSearchResults(){
   const hits = productsCache.filter(p => matchProduct(p, t));
   wrap.innerHTML = hits.length
     ? `<p class="result-count">${hits.length} result${hits.length>1?'s':''}</p>` +
-      hits.map(p=>productCardHtml(p, {term: searchTerm.trim(), itemDims:false, boxCells:true})).join('')
+      hits.map(p=>productCardHtml(p, {term: searchTerm.trim(), itemDims:false, boxCells:true, stock:true})).join('')
     : `<div class="card"><p class="empty">"${esc(searchTerm)}" નામની કોઈ પ્રોડક્ટ મળી નથી.</p></div>`;
 }
 
@@ -1870,6 +1902,7 @@ function paintMixHits(){
   }
   wrap.innerHTML = hits.map(p=>`<div class="add-hit">
       <span class="ah-name">${markHit(p.name, mixTerm.trim())}${unitWeightLine(p)}</span>
+      ${stockPillHtml(p)}
       ${mixList.some(r=>r.id===p.id)
         ? '<span class="pill sold">✓ મિક્સમાં છે</span>'
         : `<button class="primary" onclick="addToMix(${p.id})">+ Add</button>`}
@@ -1913,6 +1946,7 @@ function paintMixList(){
     if(!p) return '';
     return `<div class="mix-row">
       <span class="mx-name">${esc(p.name)}</span>
+      ${stockPillHtml(p)}
       <div class="spec spec-uw"><div class="k">Unit Weight</div><div class="v">${kg(p.unit_weight) || '—'}</div></div>
       <div class="spec spec-bunit"><div class="k">FBA Unit</div>
         <input class="mix-qty calc-safe" type="number" step="1" min="0" inputmode="numeric"
