@@ -1620,11 +1620,18 @@ function stockClass(p){
    (breakdown, tag, tap-to-open) bahut bhaari padta. Rang wahi stockClass()
    se, taaki Products ke box se kabhi alag na bole. */
 function stockPillHtml(p){
-  const cls = stockClass(p);
+  let cls = stockClass(p);
+  let total = stockFor(p.id);
+  // Vyapar me item band (inactive) par shelf par maal pada hai — Products ki
+  // tarah wo "ghost" stock dikhao, "⛔ —" nahi. Ginti me nahi, par dikhe.
+  if(cls === 'disc' && total === null){
+    const g = ghostRowsFor(p.id);
+    if(g.length){ total = g.reduce((s,v)=>s+(num(v.current_stock)||0),0); cls = 'zero'; }
+  }
   if(cls === 'nolink') return '';
-  const total = stockFor(p.id);
   const icon = cls === 'disc' ? '⛔' : ((cls === 'low' || cls === 'neg') ? '⚠️' : '📊');
-  return `<span class="spec spec-stockpill ${cls}"><span class="k">Vyapar Stock</span><span class="v">${icon} ${fmtQty(total)}</span></span>`;
+  const note = cls === 'zero' && !vyaparRowsFor(p.id).length ? '<span class="k" style="margin-top:2px">Vyapar માં બંધ</span>' : '';
+  return `<span class="spec spec-stockpill ${cls}"><span class="k">Vyapar Stock</span><span class="v">${icon} ${fmtQty(total)}</span>${note}</span>`;
 }
 function stockLineHtml(p){
   const rows = vyaparRowsFor(p.id);
