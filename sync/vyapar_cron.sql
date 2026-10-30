@@ -1,16 +1,21 @@
 -- Daily Vyapar → Product Box Size stock sync, as it actually runs.
 --
--- This lives in the SOURCE project (begblflwhxbbipsmxytd), not in the app's
+-- This lives in the SOURCE project (klugcmyhcpyyqyiykvqw, Mumbai — since 30 Oct
+-- 2026; before that begblflwhxbbipsmxytd), not in the app's
 -- own project — the app project has no admin access from here, so the sync
 -- pushes outward over PostgREST instead of being pulled in.
 --
 -- Leg 1 (Vyapar → vyapar_items) already lands around 04:45 UTC on its own.
 -- Leg 2 is this file: cron at 05:30 UTC, 45 minutes of buffer behind it.
 --
--- Applied 19 Sep 2026, after the previous cloud routine stopped on 15 Sep
+-- Applied 19 Sep 2026; re-applied 30 Oct 2026 on the new project after the
+-- Vyapar pull moved there on 17 Oct and the app went stale for 13 days. The
+-- old project's job was unscheduled the same day. Originally written after
+-- the previous cloud routine stopped on 15 Sep
 -- and went unnoticed for three days. Kept here so the job is reviewable and
 -- rebuildable; the database is not the only copy.
 
+create extension if not exists pg_cron;
 create extension if not exists http with schema extensions;
 
 create table if not exists public.pbs_push_log (
@@ -139,6 +144,8 @@ revoke all on function public.push_vyapar_to_box_app() from anon;
 revoke all on function public.push_vyapar_to_box_app() from authenticated;
 
 -- 05:30 UTC = 11:00 AM IST. Server UTC pe chalta hai.
+-- Dobara chalane par purana job pehle hatao, warna do baar chalega.
+select cron.unschedule(jobid) from cron.job where jobname = 'push_vyapar_to_box_app';
 select cron.schedule('push_vyapar_to_box_app', '30 5 * * *',
                      'select public.push_vyapar_to_box_app()');
 
