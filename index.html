@@ -2514,7 +2514,7 @@ function paintVyaparHits(){
   if(!wrap) return;
   const t = vyaparSearch.trim().toLowerCase();
   if(!t){ wrap.innerHTML = ''; return; }
-  const hits = vyaparLive.filter(v => v.item_name.toLowerCase().includes(t)).slice(0, 20);
+  const hits = vyaparPickable().filter(v => v.item_name.toLowerCase().includes(t)).slice(0, 20);
   if(!hits.length){ wrap.innerHTML = ''; return; }
   const owner = productForItem();
   wrap.innerHTML = `<div class="card">
@@ -2524,7 +2524,7 @@ function paintVyaparHits(){
       return `<div class="add-hit">
         <span class="ah-name">${markHit(v.item_name, vyaparSearch.trim())}
           <span class="mx-sub">${p ? '→ ' + esc(p.name) + (isDiscontinued(p.id) ? ' · ⛔' : '') : 'કોઈ પ્રોડક્ટ સાથે જોડાયેલું નથી'}</span></span>
-        <span class="lh-qty">${fmtQty(v.current_stock)}</span>
+        <span class="lh-qty">${fmtQty(v.current_stock)}${v.is_active === false ? ' · બંધ' : ''}</span>
         ${p ? '' : `<button class="primary" onclick="openLinkPick(${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">+ જોડો</button>`}
       </div>
       ${linkPickFor === v.item_name ? `<div class="link-pick">
@@ -2664,6 +2664,12 @@ function openPicker(id){
   pickerTerm = '';
   paintVyaparList();
 }
+// Jodne ke picker me live items + wo band (is_active=false) items jinme abhi
+// bhi stock pada hai. Vyapar/dashboard kai items ko inactive mark kar deta hai
+// (jaise Room Heater, 227 stock) aur wo picker se bilkul gayab ho jaate the.
+function vyaparPickable(){
+  return vyaparCache.filter(v => v.is_active !== false || (num(v.current_stock) || 0) > 0);
+}
 function paintPickerHits(){
   const wrap = document.getElementById('pick-hits');
   if(!wrap || !pickerFor) return;
@@ -2671,11 +2677,11 @@ function paintPickerHits(){
   if(!t){ wrap.innerHTML = '<p class="config-note" style="margin:8px 0 0">Vyapar નું નામ ટાઇપ કરો.</p>'; return; }
   const taken = {};
   linksCache.forEach(l => { if(l.product_id === pickerFor) taken[String(l.pattern).toLowerCase()] = 1; });
-  const hits = vyaparLive.filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
+  const hits = vyaparPickable().filter(v => v.item_name.toLowerCase().includes(t) && !taken[v.item_name.toLowerCase()]).slice(0, 25);
   wrap.innerHTML = hits.length
     ? hits.map(v=>`<div class="link-hit" onclick="addLink(${pickerFor}, ${JSON.stringify(v.item_name).replace(/"/g,'&quot;')})">
         <span>${markHit(v.item_name, pickerTerm.trim())}</span>
-        <span class="lh-qty">${fmtQty(v.current_stock)}</span>
+        <span class="lh-qty">${fmtQty(v.current_stock)}${v.is_active === false ? ' · બંધ' : ''}</span>
       </div>`).join('')
     : `<p class="empty" style="text-align:center">"${esc(pickerTerm)}" Vyapar માં મળ્યું નથી.</p>`;
 }
